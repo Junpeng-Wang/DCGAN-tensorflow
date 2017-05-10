@@ -144,6 +144,11 @@ class DCGAN(object):
 
     t_vars = tf.trainable_variables()
 
+    #JP: print all variables' name
+    for var in t_vars:
+      print var.name
+      print var.shape
+
     self.d_vars = [var for var in t_vars if 'd_' in var.name]
     self.g_vars = [var for var in t_vars if 'g_' in var.name]
 
@@ -244,7 +249,10 @@ class DCGAN(object):
 
           # Run g_optim twice to make sure that d_loss does not go to zero (different from paper)
           _, summary_str = self.sess.run([g_optim, self.g_sum],
-            feed_dict={ self.z: batch_z, self.y:batch_labels })
+            feed_dict={ 
+              self.z: batch_z, 
+              self.y:batch_labels 
+            })
           self.writer.add_summary(summary_str, counter)
           
           errD_fake = self.d_loss_fake.eval({
@@ -318,6 +326,17 @@ class DCGAN(object):
 
         if np.mod(counter, 500) == 2:
           self.save(config.checkpoint_dir, counter)
+
+        #JP: print out the value of trained variables each iteration
+        for var in self.g_vars:
+          print "========"
+          print var.name, var.shape
+          print var.eval()
+
+        for var in self.d_vars:
+          print "========"
+          print var.name, var.shape
+          print var.eval()
 
   def discriminator(self, image, y=None, reuse=False):
     with tf.variable_scope("discriminator") as scope:
