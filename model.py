@@ -71,7 +71,7 @@ class DCGAN(object):
     self.checkpoint_dir = checkpoint_dir
 
     if self.dataset_name == 'mnist':
-      self.data_X, self.data_y = self.load_mnist()
+      self.data_X, self.data_y = self.load_mnist() #(70000, 28, 28, 1), (70000, 10)
       self.c_dim = self.data_X[0].shape[-1]
     else:
       self.data = glob(os.path.join("./data", self.dataset_name, self.input_fname_pattern))
@@ -83,23 +83,23 @@ class DCGAN(object):
 
   def build_model(self):
     if self.y_dim:
-      self.y= tf.placeholder(tf.float32, [self.batch_size, self.y_dim], name='y')
+      self.y= tf.placeholder(tf.float32, [self.batch_size, self.y_dim], name='y') # (64, 10)
 
     if self.crop:
       image_dims = [self.output_height, self.output_width, self.c_dim]
     else:
-      image_dims = [self.input_height, self.input_width, self.c_dim]
+      image_dims = [self.input_height, self.input_width, self.c_dim] #(64, 64, 1)
 
     self.inputs = tf.placeholder(
-      tf.float32, [self.batch_size] + image_dims, name='real_images')
+      tf.float32, [self.batch_size] + image_dims, name='real_images') 
     self.sample_inputs = tf.placeholder(
       tf.float32, [self.sample_num] + image_dims, name='sample_inputs')
 
-    inputs = self.inputs
-    sample_inputs = self.sample_inputs
+    inputs = self.inputs #(64, 28, 28, 1)
+    sample_inputs = self.sample_inputs #(64, 28, 28, 1)
 
     self.z = tf.placeholder(
-      tf.float32, [None, self.z_dim], name='z')
+      tf.float32, [None, self.z_dim], name='z') #(?, 64)
     self.z_sum = histogram_summary("z", self.z)
 
     if self.y_dim:
@@ -145,9 +145,9 @@ class DCGAN(object):
     t_vars = tf.trainable_variables()
 
     #JP: print all variables' name
-    for var in t_vars:
-      print var.name
-      print var.shape
+    #for var in t_vars:
+    #  print var.name
+    #  print var.shape
 
     self.d_vars = [var for var in t_vars if 'd_' in var.name]
     self.g_vars = [var for var in t_vars if 'g_' in var.name]
@@ -328,15 +328,15 @@ class DCGAN(object):
           self.save(config.checkpoint_dir, counter)
 
         #JP: print out the value of trained variables each iteration
-        for var in self.g_vars:
-          print "========"
-          print var.name, var.shape
-          print var.eval()
+        #for var in self.g_vars:
+        #  print "========"
+        #  print var.name, var.shape
+        #  print var.eval()
 
-        for var in self.d_vars:
-          print "========"
-          print var.name, var.shape
-          print var.eval()
+        #for var in self.d_vars:
+        #  print "========"
+        #  print var.name, var.shape
+        #  print var.eval()
 
   def discriminator(self, image, y=None, reuse=False):
     with tf.variable_scope("discriminator") as scope:
@@ -408,21 +408,22 @@ class DCGAN(object):
         s_w2, s_w4 = int(s_w/2), int(s_w/4)
 
         # yb = tf.expand_dims(tf.expand_dims(y, 1),2)
-        yb = tf.reshape(y, [self.batch_size, 1, 1, self.y_dim])
-        z = concat([z, y], 1)
+        yb = tf.reshape(y, [self.batch_size, 1, 1, self.y_dim]) #(64, 1, 1, 10)
+        z = concat([z, y], 1) #(64, 110)
 
         h0 = tf.nn.relu(
-            self.g_bn0(linear(z, self.gfc_dim, 'g_h0_lin')))
-        h0 = concat([h0, y], 1)
+            self.g_bn0(linear(z, self.gfc_dim, 'g_h0_lin'))) #(64, 1024)
+        h0 = concat([h0, y], 1) #(64, 1034)
 
         h1 = tf.nn.relu(self.g_bn1(
             linear(h0, self.gf_dim*2*s_h4*s_w4, 'g_h1_lin')))
-        h1 = tf.reshape(h1, [self.batch_size, s_h4, s_w4, self.gf_dim * 2])
+        h1 = tf.reshape(h1, [self.batch_size, s_h4, s_w4, self.gf_dim * 2]) #(64, 7, 7, 128)
 
-        h1 = conv_cond_concat(h1, yb)
+        h1 = conv_cond_concat(h1, yb) #(64, 7,7, 138)
 
         h2 = tf.nn.relu(self.g_bn2(deconv2d(h1,
             [self.batch_size, s_h2, s_w2, self.gf_dim * 2], name='g_h2')))
+
         h2 = conv_cond_concat(h2, yb)
 
         return tf.nn.sigmoid(
@@ -456,6 +457,7 @@ class DCGAN(object):
 
         h4 = deconv2d(h3, [self.batch_size, s_h, s_w, self.c_dim], name='g_h4')
 
+        #JP: here, we can also return h0, h1, h2, h3 (activation map) for visualization
         return tf.nn.tanh(h4)
       else:
         s_h, s_w = self.output_height, self.output_width
