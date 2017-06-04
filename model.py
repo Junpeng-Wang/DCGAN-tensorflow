@@ -107,7 +107,7 @@ class DCGAN(object):
       self.D, self.D_logits = \
           self.discriminator(inputs, self.y, reuse=False)
 
-      self.sampler = self.sampler(self.z, self.y)
+      self.sampler = self.sampler(self.z, self.y, with_act=True)
       self.D_, self.D_logits_ = \
           self.discriminator(self.G, self.y, reuse=True)
     else:
@@ -294,7 +294,7 @@ class DCGAN(object):
 
         if np.mod(counter, 100) == 1:
           if config.dataset == 'mnist':
-            samples, d_loss, g_loss = self.sess.run(
+            [samples, h0, h1, h2, h3], d_loss, g_loss = self.sess.run(
               [self.sampler, self.d_loss, self.g_loss],
               feed_dict={
                   self.z: sample_z,
@@ -304,9 +304,31 @@ class DCGAN(object):
             )
             manifold_h = int(np.ceil(np.sqrt(samples.shape[0])))
             manifold_w = int(np.floor(np.sqrt(samples.shape[0])))
+
+            directory = '{}/{:04d}'.format(config.sample_dir, counter)
+            if not os.path.exists(directory):
+              os.makedirs(directory)
+
             save_images(samples, [manifold_h, manifold_w],
-                  './{}/train_{:02d}_{:04d}.png'.format(config.sample_dir, epoch, idx))
-            print("[Sample] d_loss: %.8f, g_loss: %.8f" % (d_loss, g_loss)) 
+                  './{}/train_smp_{:02d}_{:04d}.png'.format(directory, epoch, idx))
+
+            save_images(np.reshape(h0, [64, 32, 32, 1]), [manifold_h, manifold_w],
+                  './{}/train_h0_{:02d}_{:04d}.png'.format(directory, epoch, idx))
+
+            for ii in range(0, h1.shape[-1]):
+              save_images(np.reshape(h1[:,:,:,ii], [h1.shape[0],h1.shape[1],h1.shape[2], 1]), [manifold_h, manifold_w],
+                  './{}/train_h1_{:02d}_{:04d}_{:03d}.png'.format(directory, epoch, idx, ii))
+
+            for ii in range(0, h2.shape[-1]):
+              save_images(np.reshape(h2[:,:,:,ii], [h2.shape[0],h2.shape[1],h2.shape[2], 1]), [manifold_h, manifold_w],
+                  './{}/train_h2_{:02d}_{:04d}_{:03d}.png'.format(directory, epoch, idx, ii))
+
+            save_images(h3, [manifold_h, manifold_w],
+                  './{}/train_h3_{:02d}_{:04d}.png'.format(directory, epoch, idx))
+
+            print("[Sample] d_loss: %.8f, g_loss: %.8f" % (d_loss, g_loss))
+
+            # save the activation map
           else:
             try:
               samples, d_loss, g_loss = self.sess.run(
@@ -429,7 +451,7 @@ class DCGAN(object):
         return tf.nn.sigmoid(
             deconv2d(h2, [self.batch_size, s_h, s_w, self.c_dim], name='g_h3'))
 
-  def sampler(self, z, y=None):
+  def sampler(self, z, y=None, with_act=False):
     with tf.variable_scope("generator") as scope:
       scope.reuse_variables()
 
@@ -468,19 +490,27 @@ class DCGAN(object):
         yb = tf.reshape(y, [self.batch_size, 1, 1, self.y_dim])
         z = concat([z, y], 1)
 
-        h0 = tf.nn.relu(self.g_bn0(linear(z, self.gfc_dim, 'g_h0_lin'), train=False))
+        h0_ = linear(z, self.gfc_dim, 'g_h0_lin')
+        h0 = tf.nn.relu(self.g_bn0(h0_, train=False))
         h0 = concat([h0, y], 1)
 
-        h1 = tf.nn.relu(self.g_bn1(
-            linear(h0, self.gf_dim*2*s_h4*s_w4, 'g_h1_lin'), train=False))
+        h1 = linear(h0, self.gf_dim*2*s_h4*s_w4, 'g_h1_lin');
+        h1_ = tf.reshape(h1, [self.batch_size, s_h4, s_w4, self.gf_dim * 2])
+        h1 = tf.nn.relu(self.g_bn1(h1, train=False))
         h1 = tf.reshape(h1, [self.batch_size, s_h4, s_w4, self.gf_dim * 2])
         h1 = conv_cond_concat(h1, yb)
 
-        h2 = tf.nn.relu(self.g_bn2(
-            deconv2d(h1, [self.batch_size, s_h2, s_w2, self.gf_dim * 2], name='g_h2'), train=False))
+        h2_ = deconv2d(h1, [self.batch_size, s_h2, s_w2, self.gf_dim * 2], name='g_h2')
+        h2 = tf.nn.relu(self.g_bn2(h2_, train=False))
         h2 = conv_cond_concat(h2, yb)
 
-        return tf.nn.sigmoid(deconv2d(h2, [self.batch_size, s_h, s_w, self.c_dim], name='g_h3'))
+        h3_ = deconv2d(h2, [self.batch_size, s_h, s_w, self.c_dim], name='g_h3')
+        h3 = tf.nn.sigmoid(h3_)
+
+        if with_act:
+          return h3, h0_, h1_, h2_, h3_
+        else:
+          return h3
 
   def load_mnist(self):
     data_dir = os.path.join("./data", self.dataset_name)
