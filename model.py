@@ -314,7 +314,6 @@ class DCGAN(object):
                 self.G: samples,
               }
             )
-            print d_smp.shape, d_smp_.shape
 
             manifold_h = int(np.ceil(np.sqrt(samples.shape[0])))
             manifold_w = int(np.floor(np.sqrt(samples.shape[0])))
@@ -328,31 +327,56 @@ class DCGAN(object):
               os.makedirs(dirG)
 
             save_images(samples, [manifold_h, manifold_w],
-                  './{}/train_smp_{:02d}_{:04d}.png'.format(dirG, epoch, idx))
+                  './{}/G_smp_{:02d}_{:04d}.png'.format(dirG, epoch, idx))
 
             # save the activation map of G
-            save_images(np.reshape(h0, [64, 32, 32, 1]), [manifold_h, manifold_w],
-                  './{}/train_h0_{:02d}_{:04d}.png'.format(dirG, epoch, idx))
+            fc_size = int(np.sqrt(self.gfc_dim))
+            save_images(np.reshape(h0, [64, fc_size, fc_size, 1]), [manifold_h, manifold_w],
+                  './{}/G_h0_{:02d}_{:04d}.png'.format(dirG, epoch, idx))
             for ii in range(0, h1.shape[-1]):
               save_images(np.reshape(h1[:,:,:,ii], [h1.shape[0],h1.shape[1],h1.shape[2], 1]), [manifold_h, manifold_w],
-                  './{}/train_h1_{:02d}_{:04d}_{:03d}.png'.format(dirG, epoch, idx, ii))
+                  './{}/G_h1_{:02d}_{:04d}_{:03d}.png'.format(dirG, epoch, idx, ii))
             for ii in range(0, h2.shape[-1]):
               save_images(np.reshape(h2[:,:,:,ii], [h2.shape[0],h2.shape[1],h2.shape[2], 1]), [manifold_h, manifold_w],
-                  './{}/train_h2_{:02d}_{:04d}_{:03d}.png'.format(dirG, epoch, idx, ii))
+                  './{}/G_h2_{:02d}_{:04d}_{:03d}.png'.format(dirG, epoch, idx, ii))
             save_images(h3, [manifold_h, manifold_w],
-                  './{}/train_h3_{:02d}_{:04d}.png'.format(dirG, epoch, idx))
+                  './{}/G_h3_{:02d}_{:04d}.png'.format(dirG, epoch, idx))
 
             # save the activation map of D
             dirD = '{}/D'.format(directory)
             if not os.path.exists(dirD):
               os.makedirs(dirD)
-
-            
+            save_images(d_smp, [manifold_h, manifold_w],
+                  './{}/T_img_{:02d}_{:04d}.png'.format(dirD, epoch, idx))
+            for ii in range(0, d_h0.shape[-1]):
+              save_images(np.reshape(d_h0[:,:,:,ii], [d_h0.shape[0],d_h0.shape[1],d_h0.shape[2], 1]), [manifold_h, manifold_w],
+                  './{}/T_h0_{:02d}_{:04d}_{:03d}.png'.format(dirD, epoch, idx, ii))
+            for ii in range(0, d_h1.shape[-1]):
+              save_images(np.reshape(d_h1[:,:,:,ii], [d_h1.shape[0],d_h1.shape[1],d_h1.shape[2], 1]), [manifold_h, manifold_w],
+                  './{}/T_h1_{:02d}_{:04d}_{:03d}.png'.format(dirD, epoch, idx, ii))
+            save_images(np.reshape(d_h2, [64, fc_size, fc_size, 1]), [manifold_h, manifold_w],
+                  './{}/T_h2_{:02d}_{:04d}.png'.format(dirD, epoch, idx))
+            with open('./{}/T_h3_{:02d}_{:04d}.txt'.format(dirD, epoch, idx), 'w') as f:
+              for i in range(0, d_h3.shape[0]):
+                f.write("%f\n" % d_h3[i, 0]) 
 
             # save the activation map of D_
             dirD_ = '{}/D_'.format(directory)
             if not os.path.exists(dirD_):
               os.makedirs(dirD_)
+            save_images(d_smp_, [manifold_h, manifold_w],
+                  './{}/F_img_{:02d}_{:04d}.png'.format(dirD_, epoch, idx))
+            for ii in range(0, d_h0_.shape[-1]):
+              save_images(np.reshape(d_h0_[:,:,:,ii], [d_h0_.shape[0],d_h0_.shape[1],d_h0_.shape[2], 1]), [manifold_h, manifold_w],
+                  './{}/F_h0_{:02d}_{:04d}_{:03d}.png'.format(dirD_, epoch, idx, ii))
+            for ii in range(0, d_h1_.shape[-1]):
+              save_images(np.reshape(d_h1_[:,:,:,ii], [d_h1_.shape[0],d_h1_.shape[1],d_h1_.shape[2], 1]), [manifold_h, manifold_w],
+                  './{}/F_h1_{:02d}_{:04d}_{:03d}.png'.format(dirD_, epoch, idx, ii))
+            save_images(np.reshape(d_h2_, [64, fc_size, fc_size, 1]), [manifold_h, manifold_w],
+                  './{}/F_h2_{:02d}_{:04d}.png'.format(dirD_, epoch, idx))
+            with open('./{}/F_h3_{:02d}_{:04d}.txt'.format(dirD_, epoch, idx), 'w') as f:
+              for i in range(0, d_h3_.shape[0]):
+                f.write("%f\n" % d_h3_[i, 0]) 
 
             print("[Sample] d_loss: %.8f, g_loss: %.8f" % (d_loss, g_loss))
 
