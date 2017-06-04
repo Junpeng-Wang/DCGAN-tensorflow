@@ -110,6 +110,9 @@ class DCGAN(object):
       self.sampler = self.sampler(self.z, self.y, with_act=True)
       self.D_, self.D_logits_ = \
           self.discriminator(self.G, self.y, reuse=True)
+
+      self.samplerD = self.samplerDis(inputs, self.y, with_act=True)
+      self.samplerD_ = self.samplerDis(self.G, self.y, with_act=True)
     else:
       self.G = self.generator(self.z)
       self.D, self.D_logits = self.discriminator(inputs)
@@ -292,7 +295,7 @@ class DCGAN(object):
           % (epoch, idx, batch_idxs,
             time.time() - start_time, errD_fake+errD_real, errG))
 
-        if np.mod(counter, 100) == 1:
+        if np.mod(counter, 10) == 1:
           if config.dataset == 'mnist':
             [samples, h0, h1, h2, h3], d_loss, g_loss = self.sess.run(
               [self.sampler, self.d_loss, self.g_loss],
@@ -302,6 +305,17 @@ class DCGAN(object):
                   self.y:sample_labels,
               }
             )
+
+            [samplesD, d_smp, d_h0, d_h1, d_h2, d_h3], [samplesD_, d_smp_, d_h0_, d_h1_, d_h2_, d_h3_] = self.sess.run(
+              [self.samplerD, self.samplerD_], 
+              feed_dict={
+                self.inputs: sample_inputs,
+                self.y: sample_labels,
+                self.G: samples,
+              }
+            )
+            print d_smp.shape, d_smp_.shape
+
             manifold_h = int(np.ceil(np.sqrt(samples.shape[0])))
             manifold_w = int(np.floor(np.sqrt(samples.shape[0])))
 
@@ -309,26 +323,39 @@ class DCGAN(object):
             if not os.path.exists(directory):
               os.makedirs(directory)
 
+            dirG = '{}/G'.format(directory)
+            if not os.path.exists(dirG):
+              os.makedirs(dirG)
+
             save_images(samples, [manifold_h, manifold_w],
-                  './{}/train_smp_{:02d}_{:04d}.png'.format(directory, epoch, idx))
+                  './{}/train_smp_{:02d}_{:04d}.png'.format(dirG, epoch, idx))
 
+            # save the activation map of G
             save_images(np.reshape(h0, [64, 32, 32, 1]), [manifold_h, manifold_w],
-                  './{}/train_h0_{:02d}_{:04d}.png'.format(directory, epoch, idx))
-
+                  './{}/train_h0_{:02d}_{:04d}.png'.format(dirG, epoch, idx))
             for ii in range(0, h1.shape[-1]):
               save_images(np.reshape(h1[:,:,:,ii], [h1.shape[0],h1.shape[1],h1.shape[2], 1]), [manifold_h, manifold_w],
-                  './{}/train_h1_{:02d}_{:04d}_{:03d}.png'.format(directory, epoch, idx, ii))
-
+                  './{}/train_h1_{:02d}_{:04d}_{:03d}.png'.format(dirG, epoch, idx, ii))
             for ii in range(0, h2.shape[-1]):
               save_images(np.reshape(h2[:,:,:,ii], [h2.shape[0],h2.shape[1],h2.shape[2], 1]), [manifold_h, manifold_w],
-                  './{}/train_h2_{:02d}_{:04d}_{:03d}.png'.format(directory, epoch, idx, ii))
-
+                  './{}/train_h2_{:02d}_{:04d}_{:03d}.png'.format(dirG, epoch, idx, ii))
             save_images(h3, [manifold_h, manifold_w],
-                  './{}/train_h3_{:02d}_{:04d}.png'.format(directory, epoch, idx))
+                  './{}/train_h3_{:02d}_{:04d}.png'.format(dirG, epoch, idx))
+
+            # save the activation map of D
+            dirD = '{}/D'.format(directory)
+            if not os.path.exists(dirD):
+              os.makedirs(dirD)
+
+            
+
+            # save the activation map of D_
+            dirD_ = '{}/D_'.format(directory)
+            if not os.path.exists(dirD_):
+              os.makedirs(dirD_)
 
             print("[Sample] d_loss: %.8f, g_loss: %.8f" % (d_loss, g_loss))
 
-            # save the activation map
           else:
             try:
               samples, d_loss, g_loss = self.sess.run(
@@ -390,6 +417,43 @@ class DCGAN(object):
         h3 = linear(h2, 1, 'd_h3_lin')
         
         return tf.nn.sigmoid(h3), h3
+
+  def samplerDis(self, image, y=None, with_act=False):
+    with tf.variable_scope("discriminator") as scope:
+      scope.reuse_variables()
+
+      if not self.y_dim:
+        h0 = lrelu(conv2d(image, self.df_dim, name='d_h0_conv'))
+        h1 = lrelu(self.d_bn1(conv2d(h0, self.df_dim*2, name='d_h1_conv')))
+        h2 = lrelu(self.d_bn2(conv2d(h1, self.df_dim*4, name='d_h2_conv')))
+        h3 = lrelu(self.d_bn3(conv2d(h2, self.df_dim*8, name='d_h3_conv')))
+        h4 = linear(tf.reshape(h3, [self.batch_size, -1]), 1, 'd_h3_lin')
+
+        return tf.nn.sigmoid(h4), h4
+      else:
+        yb = tf.reshape(y, [self.batch_size, 1, 1, self.y_dim])
+        x = conv_cond_concat(image, yb)
+
+        h0_ = conv2d(x, self.c_dim + self.y_dim, name='d_h0_conv')
+        h0 = lrelu(h0_)
+        h0 = conv_cond_concat(h0, yb)
+
+        h1_ = conv2d(h0, self.df_dim + self.y_dim, name='d_h1_conv')
+        h1 = lrelu(self.d_bn1(h1_))
+        h1 = tf.reshape(h1, [self.batch_size, -1])      
+        h1 = concat([h1, y], 1)
+        
+        h2_ = linear(h1, self.dfc_dim, 'd_h2_lin')
+        h2 = lrelu(self.d_bn2(h2_))
+        h2 = concat([h2, y], 1)
+
+        h3_ = linear(h2, 1, 'd_h3_lin')
+        h3 = tf.nn.sigmoid(h3_)
+
+        if with_act:
+          return h3, image, h0_, h1_, h2_, h3_
+        else:
+          return h3
 
   def generator(self, z, y=None):
     with tf.variable_scope("generator") as scope:
