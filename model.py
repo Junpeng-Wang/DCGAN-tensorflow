@@ -6,6 +6,7 @@ from glob import glob
 import tensorflow as tf
 import numpy as np
 from six.moves import xrange
+import json
 
 from ops import *
 from utils import *
@@ -326,10 +327,9 @@ class DCGAN(object):
             if not os.path.exists(dirG):
               os.makedirs(dirG)
 
+            # save the activation map of G
             save_images(samples, [manifold_h, manifold_w],
                   './{}/G_smp_{:02d}_{:04d}.png'.format(dirG, epoch, idx))
-
-            # save the activation map of G
             fc_size = int(np.sqrt(self.gfc_dim))
             save_images(np.reshape(h0, [64, fc_size, fc_size, 1]), [manifold_h, manifold_w],
                   './{}/G_h0_{:02d}_{:04d}.png'.format(dirG, epoch, idx))
@@ -341,6 +341,35 @@ class DCGAN(object):
                   './{}/G_h2_{:02d}_{:04d}_{:03d}.png'.format(dirG, epoch, idx, ii))
             save_images(h3, [manifold_h, manifold_w],
                   './{}/G_h3_{:02d}_{:04d}.png'.format(dirG, epoch, idx))
+
+            # save G as a json file
+            data = [];
+
+            layer_h0 = {}
+            layer_h0['type'] = 'linear'
+            layer_h0['shape'] = [64, 32, 32, 1]
+            layer_h0['data'] = h0.flatten().tolist()
+            data.append(layer_h0)
+
+            layer_h1 = {}
+            layer_h1['type'] = 'linear'
+            layer_h1['shape'] = [64, 7, 7, 128]
+            layer_h1['data'] = h1.flatten().tolist()
+            data.append(layer_h1)
+
+            layer_h2 = {}
+            layer_h2['type'] = 'deconv'
+            layer_h2['shape'] = [64, 14, 14, 128]
+            layer_h2['data'] = h2.flatten().tolist()
+            data.append(layer_h2)
+
+            layer_h3 = {}
+            layer_h3['type'] = 'deconv'
+            layer_h3['shape'] = [64, 28, 28, 1]
+            layer_h3['data'] = h3.flatten().tolist()
+            data.append(layer_h3)
+            with open('./{}/G_{:02d}_{:04d}.json'.format(dirG, epoch, idx), 'w') as f:
+              json.dump(data, f)
 
             # save the activation map of D
             dirD = '{}/D'.format(directory)
