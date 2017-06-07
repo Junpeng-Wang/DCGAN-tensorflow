@@ -296,7 +296,7 @@ class DCGAN(object):
           % (epoch, idx, batch_idxs,
             time.time() - start_time, errD_fake+errD_real, errG))
 
-        if np.mod(counter, 10) == 1:
+        if np.mod(counter, 5) == 1:
           if config.dataset == 'mnist':
             [samples, h0, h1, h2, h3], d_loss, g_loss = self.sess.run(
               [self.sampler, self.d_loss, self.g_loss],
@@ -389,6 +389,42 @@ class DCGAN(object):
               for i in range(0, d_h3.shape[0]):
                 f.write("%f\n" % d_h3[i, 0]) 
 
+            # save D as a json file
+            dataD = [];
+
+            layer_img = {}
+            layer_img['type'] = 'input'
+            layer_img['shape'] = [64, 28, 28, 1]
+            layer_img['data'] = d_smp.flatten().tolist()
+            dataD.append(layer_img)
+
+            layer_d_h0 = {}
+            layer_d_h0['type'] = 'conv'
+            layer_d_h0['shape'] = [64, 14, 14, 11]
+            layer_d_h0['data'] = d_h0.flatten().tolist()
+            dataD.append(layer_d_h0)
+
+            layer_d_h1 = {}
+            layer_d_h1['type'] = 'conv'
+            layer_d_h1['shape'] = [64, 7, 7, 74]
+            layer_d_h1['data'] = d_h1.flatten().tolist()
+            dataD.append(layer_d_h1)
+
+            layer_d_h2 = {}
+            layer_d_h2['type'] = 'linear'
+            layer_d_h2['shape'] = [64, 32, 32, 1]
+            layer_d_h2['data'] = d_h2.flatten().tolist()
+            dataD.append(layer_d_h2)
+
+            layer_d_h3 = {}
+            layer_d_h3['type'] = 'linear'
+            layer_d_h3['shape'] = [64, 1, 1, 1]
+            layer_d_h3['data'] = d_h3.flatten().tolist()
+            dataD.append(layer_d_h3)
+
+            with open('./{}/T_{:02d}_{:04d}.json'.format(dirD, epoch, idx), 'w') as f:
+              json.dump(dataD, f)
+
             # save the activation map of D_
             dirD_ = '{}/D_'.format(directory)
             if not os.path.exists(dirD_):
@@ -406,6 +442,42 @@ class DCGAN(object):
             with open('./{}/F_h3_{:02d}_{:04d}.txt'.format(dirD_, epoch, idx), 'w') as f:
               for i in range(0, d_h3_.shape[0]):
                 f.write("%f\n" % d_h3_[i, 0]) 
+
+            # save D_ as a json file
+            dataD_ = [];
+
+            layer_img_ = {}
+            layer_img_['type'] = 'input'
+            layer_img_['shape'] = [64, 28, 28, 1]
+            layer_img_['data'] = d_smp_.flatten().tolist()
+            dataD_.append(layer_img_)
+
+            layer_d_h0_ = {}
+            layer_d_h0_['type'] = 'conv'
+            layer_d_h0_['shape'] = [64, 14, 14, 11]
+            layer_d_h0_['data'] = d_h0_.flatten().tolist()
+            dataD_.append(layer_d_h0_)
+
+            layer_d_h1_ = {}
+            layer_d_h1_['type'] = 'conv'
+            layer_d_h1_['shape'] = [64, 7, 7, 74]
+            layer_d_h1_['data'] = d_h1_.flatten().tolist()
+            dataD_.append(layer_d_h1_)
+
+            layer_d_h2_ = {}
+            layer_d_h2_['type'] = 'linear'
+            layer_d_h2_['shape'] = [64, 32, 32, 1]
+            layer_d_h2_['data'] = d_h2_.flatten().tolist()
+            dataD_.append(layer_d_h2_)
+
+            layer_d_h3_ = {}
+            layer_d_h3_['type'] = 'linear'
+            layer_d_h3_['shape'] = [64, 1, 1, 1]
+            layer_d_h3_['data'] = d_h3_.flatten().tolist()
+            dataD_.append(layer_d_h3_)
+
+            with open('./{}/F_{:02d}_{:04d}.json'.format(dirD_, epoch, idx), 'w') as f:
+              json.dump(dataD_, f)
 
             print("[Sample] d_loss: %.8f, g_loss: %.8f" % (d_loss, g_loss))
 
