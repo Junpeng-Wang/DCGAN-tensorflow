@@ -188,9 +188,9 @@ def visualize(sess, dcgan, config, option):
         y_one_hot = np.zeros((config.batch_size, 10))
         y_one_hot[np.arange(config.batch_size), y] = 1
 
-        [samples, h0, h1, h2, h3] = sess.run(dcgan.sampler, feed_dict={dcgan.z: z_sample, dcgan.y: y_one_hot})
+        [samples, h0, h0r, h1, h1r, h2, h2r, h3] = sess.run(dcgan.sampler, feed_dict={dcgan.z: z_sample, dcgan.y: y_one_hot})
       else:
-        samples = sess.run(dcgan.sampler, feed_dict={dcgan.z: z_sample})
+        [samples, z, h0, h0r, h1, h1r, h2, h2r, h3, h3r, h4] = sess.run(dcgan.sampler, feed_dict={dcgan.z: z_sample})
 
       save_images(samples, [image_frame_dim, image_frame_dim], './samples/test_arange_%s.png' % (idx))
   elif option == 2:

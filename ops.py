@@ -42,6 +42,14 @@ class batch_norm(object):
                       is_training=train,
                       scope=self.name)
 
+# data: json object array
+def append_layer(data, name, size, lrdt):
+  layer = {}
+  layer['type'] = name
+  layer['shape'] = size
+  layer['data'] = lrdt.flatten().tolist()
+  data.append(layer)
+
 def conv_cond_concat(x, y):
   """Concatenate conditioning vector on feature map axis."""
   x_shapes = x.get_shape()
