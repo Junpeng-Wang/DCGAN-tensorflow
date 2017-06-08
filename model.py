@@ -298,7 +298,7 @@ class DCGAN(object):
 
         if np.mod(counter, 3) == 1:
           if config.dataset == 'mnist':
-            [samples, h0, h1, h2, h3], d_loss, g_loss = self.sess.run(
+            [samples, h0, h0r, h1, h1r, h2, h2r, h3], d_loss, g_loss = self.sess.run(
               [self.sampler, self.d_loss, self.g_loss],
               feed_dict={
                   self.z: sample_z,
@@ -307,7 +307,8 @@ class DCGAN(object):
               }
             )
 
-            [samplesD, d_smp, d_h0, d_h1, d_h2, d_h3], [samplesD_, d_smp_, d_h0_, d_h1_, d_h2_, d_h3_] = self.sess.run(
+            [samplesD, d_smp, d_h0, d_h0r, d_h1, d_h1r, d_h2, d_h2r, d_h3], \
+              [samplesD_, d_smp_, d_h0_, d_h0r_, d_h1_, d_h1r_, d_h2_, d_h2r_, d_h3_] = self.sess.run(
               [self.samplerD, self.samplerD_], 
               feed_dict={
                 self.inputs: sample_inputs,
@@ -351,17 +352,35 @@ class DCGAN(object):
             layer_h0['data'] = h0.flatten().tolist()
             data.append(layer_h0)
 
+            layer_h0r = {}
+            layer_h0r['type'] = 'relu'
+            layer_h0r['shape'] = [64, 32, 32, 1]
+            layer_h0r['data'] = h0r.flatten().tolist()
+            data.append(layer_h0r)
+
             layer_h1 = {}
             layer_h1['type'] = 'linear'
             layer_h1['shape'] = [64, 7, 7, 128]
             layer_h1['data'] = h1.flatten().tolist()
             data.append(layer_h1)
 
+            layer_h1r = {}
+            layer_h1r['type'] = 'relu'
+            layer_h1r['shape'] = [64, 7, 7, 128]
+            layer_h1r['data'] = h1r.flatten().tolist()
+            data.append(layer_h1r)
+
             layer_h2 = {}
             layer_h2['type'] = 'deconv'
             layer_h2['shape'] = [64, 14, 14, 128]
             layer_h2['data'] = h2.flatten().tolist()
             data.append(layer_h2)
+
+            layer_h2r = {}
+            layer_h2r['type'] = 'relu'
+            layer_h2r['shape'] = [64, 14, 14, 128]
+            layer_h2r['data'] = h2r.flatten().tolist()
+            data.append(layer_h2r)
 
             layer_h3 = {}
             layer_h3['type'] = 'deconv'
@@ -404,17 +423,35 @@ class DCGAN(object):
             layer_d_h0['data'] = d_h0.flatten().tolist()
             dataD.append(layer_d_h0)
 
+            layer_d_h0r = {}
+            layer_d_h0r['type'] = 'relu'
+            layer_d_h0r['shape'] = [64, 14, 14, 11]
+            layer_d_h0r['data'] = d_h0r.flatten().tolist()
+            dataD.append(layer_d_h0r)
+
             layer_d_h1 = {}
             layer_d_h1['type'] = 'conv'
             layer_d_h1['shape'] = [64, 7, 7, 74]
             layer_d_h1['data'] = d_h1.flatten().tolist()
             dataD.append(layer_d_h1)
 
+            layer_d_h1r = {}
+            layer_d_h1r['type'] = 'relu'
+            layer_d_h1r['shape'] = [64, 7, 7, 74]
+            layer_d_h1r['data'] = d_h1r.flatten().tolist()
+            dataD.append(layer_d_h1r)
+
             layer_d_h2 = {}
             layer_d_h2['type'] = 'linear'
             layer_d_h2['shape'] = [64, 32, 32, 1]
             layer_d_h2['data'] = d_h2.flatten().tolist()
             dataD.append(layer_d_h2)
+
+            layer_d_h2r = {}
+            layer_d_h2r['type'] = 'relu'
+            layer_d_h2r['shape'] = [64, 32, 32, 1]
+            layer_d_h2r['data'] = d_h2r.flatten().tolist()
+            dataD.append(layer_d_h2r)
 
             layer_d_h3 = {}
             layer_d_h3['type'] = 'linear'
@@ -458,17 +495,35 @@ class DCGAN(object):
             layer_d_h0_['data'] = d_h0_.flatten().tolist()
             dataD_.append(layer_d_h0_)
 
+            layer_d_h0r_ = {}
+            layer_d_h0r_['type'] = 'relu'
+            layer_d_h0r_['shape'] = [64, 14, 14, 11]
+            layer_d_h0r_['data'] = d_h0r_.flatten().tolist()
+            dataD_.append(layer_d_h0r_)
+
             layer_d_h1_ = {}
             layer_d_h1_['type'] = 'conv'
             layer_d_h1_['shape'] = [64, 7, 7, 74]
             layer_d_h1_['data'] = d_h1_.flatten().tolist()
             dataD_.append(layer_d_h1_)
 
+            layer_d_h1r_ = {}
+            layer_d_h1r_['type'] = 'relu'
+            layer_d_h1r_['shape'] = [64, 7, 7, 74]
+            layer_d_h1r_['data'] = d_h1r_.flatten().tolist()
+            dataD_.append(layer_d_h1r_)
+
             layer_d_h2_ = {}
             layer_d_h2_['type'] = 'linear'
             layer_d_h2_['shape'] = [64, 32, 32, 1]
             layer_d_h2_['data'] = d_h2_.flatten().tolist()
             dataD_.append(layer_d_h2_)
+
+            layer_d_h2r_ = {}
+            layer_d_h2r_['type'] = 'relu'
+            layer_d_h2r_['shape'] = [64, 32, 32, 1]
+            layer_d_h2r_['data'] = d_h2r_.flatten().tolist()
+            dataD_.append(layer_d_h2r_)
 
             layer_d_h3_ = {}
             layer_d_h3_['type'] = 'linear'
@@ -560,23 +615,23 @@ class DCGAN(object):
         x = conv_cond_concat(image, yb)
 
         h0_ = conv2d(x, self.c_dim + self.y_dim, name='d_h0_conv')
-        h0 = lrelu(h0_)
-        h0 = conv_cond_concat(h0, yb)
+        h0r = lrelu(h0_)
+        h0 = conv_cond_concat(h0r, yb)
 
         h1_ = conv2d(h0, self.df_dim + self.y_dim, name='d_h1_conv')
-        h1 = lrelu(self.d_bn1(h1_))
-        h1 = tf.reshape(h1, [self.batch_size, -1])      
+        h1r = lrelu(self.d_bn1(h1_))
+        h1 = tf.reshape(h1r, [self.batch_size, -1])      
         h1 = concat([h1, y], 1)
         
         h2_ = linear(h1, self.dfc_dim, 'd_h2_lin')
-        h2 = lrelu(self.d_bn2(h2_))
-        h2 = concat([h2, y], 1)
+        h2r = lrelu(self.d_bn2(h2_))
+        h2 = concat([h2r, y], 1)
 
         h3_ = linear(h2, 1, 'd_h3_lin')
         h3 = tf.nn.sigmoid(h3_)
 
         if with_act:
-          return h3, image, h0_, h1_, h2_, h3_
+          return h3, image, h0_, h0r, h1_, h1r, h2_, h2r, h3_
         else:
           return h3
 
@@ -680,24 +735,24 @@ class DCGAN(object):
         z = concat([z, y], 1)
 
         h0_ = linear(z, self.gfc_dim, 'g_h0_lin')
-        h0 = tf.nn.relu(self.g_bn0(h0_, train=False))
-        h0 = concat([h0, y], 1)
+        h0r = tf.nn.relu(self.g_bn0(h0_, train=False))
+        h0 = concat([h0r, y], 1)
 
         h1 = linear(h0, self.gf_dim*2*s_h4*s_w4, 'g_h1_lin');
         h1_ = tf.reshape(h1, [self.batch_size, s_h4, s_w4, self.gf_dim * 2])
         h1 = tf.nn.relu(self.g_bn1(h1, train=False))
-        h1 = tf.reshape(h1, [self.batch_size, s_h4, s_w4, self.gf_dim * 2])
-        h1 = conv_cond_concat(h1, yb)
+        h1r = tf.reshape(h1, [self.batch_size, s_h4, s_w4, self.gf_dim * 2])
+        h1 = conv_cond_concat(h1r, yb)
 
         h2_ = deconv2d(h1, [self.batch_size, s_h2, s_w2, self.gf_dim * 2], name='g_h2')
-        h2 = tf.nn.relu(self.g_bn2(h2_, train=False))
-        h2 = conv_cond_concat(h2, yb)
+        h2r = tf.nn.relu(self.g_bn2(h2_, train=False))
+        h2 = conv_cond_concat(h2r, yb)
 
         h3_ = deconv2d(h2, [self.batch_size, s_h, s_w, self.c_dim], name='g_h3')
         h3 = tf.nn.sigmoid(h3_)
 
         if with_act:
-          return h3, h0_, h1_, h2_, h3_
+          return h3, h0_, h0r, h1_, h1r, h2_, h2r, h3_
         else:
           return h3
 
