@@ -121,6 +121,9 @@ class DCGAN(object):
       self.sampler = self.sampler(self.z, with_act=True)
       self.D_, self.D_logits_ = self.discriminator(self.G, reuse=True)
 
+      self.samplerD = self.samplerDis(inputs, with_act=True)
+      self.samplerD_ = self.samplerDis(self.G, with_act=True)
+
     self.d_sum = histogram_summary("d", self.D)
     self.d__sum = histogram_summary("d_", self.D_)
     self.G_sum = image_summary("G", self.G)
@@ -354,49 +357,6 @@ class DCGAN(object):
             append_layer(data, 'relu',   [64, 14, 14, 128], h2r);
             append_layer(data, 'deconv', [64, 28, 28, 1],   h3);
 
-            '''
-            layer_h0 = {}
-            layer_h0['type'] = 'linear'
-            layer_h0['shape'] = [64, 32, 32, 1]
-            layer_h0['data'] = h0.flatten().tolist()
-            data.append(layer_h0)
-
-            layer_h0r = {}
-            layer_h0r['type'] = 'relu'
-            layer_h0r['shape'] = [64, 32, 32, 1]
-            layer_h0r['data'] = h0r.flatten().tolist()
-            data.append(layer_h0r)
-
-            layer_h1 = {}
-            layer_h1['type'] = 'linear'
-            layer_h1['shape'] = [64, 7, 7, 128]
-            layer_h1['data'] = h1.flatten().tolist()
-            data.append(layer_h1)
-
-            layer_h1r = {}
-            layer_h1r['type'] = 'relu'
-            layer_h1r['shape'] = [64, 7, 7, 128]
-            layer_h1r['data'] = h1r.flatten().tolist()
-            data.append(layer_h1r)
-
-            layer_h2 = {}
-            layer_h2['type'] = 'deconv'
-            layer_h2['shape'] = [64, 14, 14, 128]
-            layer_h2['data'] = h2.flatten().tolist()
-            data.append(layer_h2)
-
-            layer_h2r = {}
-            layer_h2r['type'] = 'relu'
-            layer_h2r['shape'] = [64, 14, 14, 128]
-            layer_h2r['data'] = h2r.flatten().tolist()
-            data.append(layer_h2r)
-
-            layer_h3 = {}
-            layer_h3['type'] = 'deconv'
-            layer_h3['shape'] = [64, 28, 28, 1]
-            layer_h3['data'] = h3.flatten().tolist()
-            data.append(layer_h3)
-            '''
             with open('./{}/G_{:02d}_{:04d}.json'.format(dirG, epoch, idx), 'w') as f:
               json.dump(data, f)
 
@@ -477,14 +437,14 @@ class DCGAN(object):
                 },
               )
 
-              '''[samplesD, d_smp, d_h0, d_h0r, d_h1, d_h1r, d_h2, d_h2r, d_h3], \
-                [samplesD_, d_smp_, d_h0_, d_h0r_, d_h1_, d_h1r_, d_h2_, d_h2r_, d_h3_] = self.sess.run(
+              [samplesD, d_smp, d_h0, d_h0r, d_h1, d_h1r, d_h2, d_h2r, d_h3, d_h3r, d_h4], \
+                [samplesD_, d_smp_, d_h0_, d_h0r_, d_h1_, d_h1r_, d_h2_, d_h2r_, d_h3_, d_h3r_, d_h4_] = self.sess.run(
                 [self.samplerD, self.samplerD_], 
                 feed_dict={
                   self.inputs: sample_inputs,
                   self.G: samples,
                 }
-              )'''
+              )
               
               manifold_h = int(np.ceil(np.sqrt(samples.shape[0])))
               manifold_w = int(np.floor(np.sqrt(samples.shape[0])))
@@ -525,21 +485,101 @@ class DCGAN(object):
               
               # save G as a json file
               data = [];
-
-              append_layer(data, 'input',   [64, 10, 10, 1],   z);
-              append_layer(data, 'linear',  [64, 4, 4, 512],   h0);
-              append_layer(data, 'relu',    [64, 4, 4, 512],   h0r);
-              append_layer(data, 'deconv',  [64, 8, 8, 256],   h1);
-              append_layer(data, 'relu',    [64, 8, 8, 256],   h1r);
-              append_layer(data, 'deconv',  [64, 16, 16, 128], h2);
-              append_layer(data, 'relu',    [64, 16, 16, 128], h2r);
-              append_layer(data, 'deconv',  [64, 32, 32, 64],  h3);
-              append_layer(data, 'relu',    [64, 32, 32, 64],  h3r);
-              append_layer(data, 'deconv',  [64, 64, 64, 3],   h4);
-              append_layer(data, 'tanh',    [64, 64, 64, 3],   samples);
+              bz = self.batch_size
+              append_layer(data, 'input',   [bz, 10, 10, 1],   z);
+              append_layer(data, 'linear',  [bz, 4, 4, 512],   h0);
+              append_layer(data, 'relu',    [bz, 4, 4, 512],   h0r);
+              append_layer(data, 'deconv',  [bz, 8, 8, 256],   h1);
+              append_layer(data, 'relu',    [bz, 8, 8, 256],   h1r);
+              append_layer(data, 'deconv',  [bz, 16, 16, 128], h2);
+              append_layer(data, 'relu',    [bz, 16, 16, 128], h2r);
+              append_layer(data, 'deconv',  [bz, 32, 32, 64],  h3);
+              append_layer(data, 'relu',    [bz, 32, 32, 64],  h3r);
+              append_layer(data, 'deconv',  [bz, 64, 64, 3],   h4);
+              append_layer(data, 'tanh',    [bz, 64, 64, 3],   samples);
 
               with open('./{}/G_{:02d}_{:04d}.json'.format(dirG, epoch, idx), 'w') as f:
                 json.dump(data, f)
+
+              # dump data of D
+              dirD = '{}/D'.format(directory)
+              if not os.path.exists(dirD):
+                os.makedirs(dirD)
+
+              save_images(d_smp, [manifold_h, manifold_w],
+                    './{}/T_img_{:02d}_{:04d}.png'.format(dirD, epoch, idx))
+              for ii in range(0, d_h0.shape[-1]):
+                save_images(np.reshape(d_h0[:,:,:,ii], [d_h0.shape[0],d_h0.shape[1],d_h0.shape[2], 1]), [manifold_h, manifold_w],
+                    './{}/T_h0_{:02d}_{:04d}_{:03d}.png'.format(dirD, epoch, idx, ii))
+              for ii in range(0, d_h1.shape[-1]):
+                save_images(np.reshape(d_h1[:,:,:,ii], [d_h1.shape[0],d_h1.shape[1],d_h1.shape[2], 1]), [manifold_h, manifold_w],
+                    './{}/T_h1_{:02d}_{:04d}_{:03d}.png'.format(dirD, epoch, idx, ii))
+              for ii in range(0, d_h2.shape[-1]):
+                save_images(np.reshape(d_h2[:,:,:,ii], [d_h2.shape[0],d_h2.shape[1],d_h2.shape[2], 1]), [manifold_h, manifold_w],
+                    './{}/T_h2_{:02d}_{:04d}_{:03d}.png'.format(dirD, epoch, idx, ii))
+              for ii in range(0, d_h3.shape[-1]):
+                save_images(np.reshape(d_h3[:,:,:,ii], [d_h3.shape[0],d_h3.shape[1],d_h3.shape[2], 1]), [manifold_h, manifold_w],
+                    './{}/T_h3_{:02d}_{:04d}_{:03d}.png'.format(dirD, epoch, idx, ii))
+              with open('./{}/T_h4_{:02d}_{:04d}.txt'.format(dirD, epoch, idx), 'w') as f:
+                for i in range(0, samplesD.shape[0]):
+                  f.write("%f\n" % samplesD[i, 0]) 
+
+              # save D as a json file
+              dataD = [];
+              append_layer(dataD, 'input',  [bz, 64, 64, 3],    d_smp);
+              append_layer(dataD, 'conv',   [bz, 32, 32, 64],   d_h0);
+              append_layer(dataD, 'relu',   [bz, 32, 32, 64],   d_h0r);
+              append_layer(dataD, 'conv',   [bz, 16, 16, 128],  d_h1);
+              append_layer(dataD, 'relu',   [bz, 16, 16, 128],  d_h1r);
+              append_layer(dataD, 'conv',   [bz, 8, 8, 256],    d_h2);
+              append_layer(dataD, 'relu',   [bz, 8, 8, 256],    d_h2r);
+              append_layer(dataD, 'conv',   [bz, 4, 4, 512],    d_h3);
+              append_layer(dataD, 'relu',   [bz, 4, 4, 512],    d_h3r);
+              append_layer(dataD, 'linear', [bz, 1, 1, 1],      d_h4);
+              append_layer(dataD, 'sigmoid',[bz, 1, 1, 1],      samplesD);
+
+              with open('./{}/T_{:02d}_{:04d}.json'.format(dirD, epoch, idx), 'w') as f:
+                json.dump(dataD, f)
+
+              # dump data of D_
+              dirD_ = '{}/D_'.format(directory)
+              if not os.path.exists(dirD_):
+                os.makedirs(dirD_)
+
+              save_images(d_smp_, [manifold_h, manifold_w],
+                    './{}/F_img_{:02d}_{:04d}.png'.format(dirD_, epoch, idx))
+              for ii in range(0, d_h0_.shape[-1]):
+                save_images(np.reshape(d_h0_[:,:,:,ii], [d_h0_.shape[0],d_h0_.shape[1],d_h0_.shape[2], 1]), [manifold_h, manifold_w],
+                    './{}/F_h0_{:02d}_{:04d}_{:03d}.png'.format(dirD_, epoch, idx, ii))
+              for ii in range(0, d_h1_.shape[-1]):
+                save_images(np.reshape(d_h1_[:,:,:,ii], [d_h1_.shape[0],d_h1_.shape[1],d_h1_.shape[2], 1]), [manifold_h, manifold_w],
+                    './{}/F_h1_{:02d}_{:04d}_{:03d}.png'.format(dirD_, epoch, idx, ii))
+              for ii in range(0, d_h2_.shape[-1]):
+                save_images(np.reshape(d_h2_[:,:,:,ii], [d_h2_.shape[0],d_h2_.shape[1],d_h2_.shape[2], 1]), [manifold_h, manifold_w],
+                    './{}/F_h2_{:02d}_{:04d}_{:03d}.png'.format(dirD_, epoch, idx, ii))
+              for ii in range(0, d_h3_.shape[-1]):
+                save_images(np.reshape(d_h3_[:,:,:,ii], [d_h3_.shape[0],d_h3_.shape[1],d_h3_.shape[2], 1]), [manifold_h, manifold_w],
+                    './{}/F_h3_{:02d}_{:04d}_{:03d}.png'.format(dirD_, epoch, idx, ii))
+              with open('./{}/F_h4_{:02d}_{:04d}.txt'.format(dirD_, epoch, idx), 'w') as f:
+                for i in range(0, samplesD_.shape[0]):
+                  f.write("%f\n" % samplesD_[i, 0]) 
+
+              # save D as a json file
+              dataD_ = [];
+              append_layer(dataD_, 'input',  [bz, 64, 64, 3],    d_smp_);
+              append_layer(dataD_, 'conv',   [bz, 32, 32, 64],   d_h0_);
+              append_layer(dataD_, 'relu',   [bz, 32, 32, 64],   d_h0r_);
+              append_layer(dataD_, 'conv',   [bz, 16, 16, 128],  d_h1_);
+              append_layer(dataD_, 'relu',   [bz, 16, 16, 128],  d_h1r_);
+              append_layer(dataD_, 'conv',   [bz, 8, 8, 256],    d_h2_);
+              append_layer(dataD_, 'relu',   [bz, 8, 8, 256],    d_h2r_);
+              append_layer(dataD_, 'conv',   [bz, 4, 4, 512],    d_h3_);
+              append_layer(dataD_, 'relu',   [bz, 4, 4, 512],    d_h3r_);
+              append_layer(dataD_, 'linear', [bz, 1, 1, 1],      d_h4_);
+              append_layer(dataD_, 'sigmoid',[bz, 1, 1, 1],      samplesD_);
+
+              with open('./{}/F_{:02d}_{:04d}.json'.format(dirD_, epoch, idx), 'w') as f:
+                json.dump(dataD_, f)
 
               print("[Sample] d_loss: %.8f, g_loss: %.8f" % (d_loss, g_loss)) 
             except:
@@ -595,13 +635,25 @@ class DCGAN(object):
       scope.reuse_variables()
 
       if not self.y_dim:
-        h0 = lrelu(conv2d(image, self.df_dim, name='d_h0_conv'))
-        h1 = lrelu(self.d_bn1(conv2d(h0, self.df_dim*2, name='d_h1_conv')))
-        h2 = lrelu(self.d_bn2(conv2d(h1, self.df_dim*4, name='d_h2_conv')))
-        h3 = lrelu(self.d_bn3(conv2d(h2, self.df_dim*8, name='d_h3_conv')))
-        h4 = linear(tf.reshape(h3, [self.batch_size, -1]), 1, 'd_h3_lin')
+        h0 = conv2d(image, self.df_dim, name='d_h0_conv')
+        h0r = lrelu(h0)
 
-        return tf.nn.sigmoid(h4), h4
+        h1 = conv2d(h0r, self.df_dim*2, name='d_h1_conv')
+        h1r = lrelu(self.d_bn1(h1))
+
+        h2 = conv2d(h1r, self.df_dim*4, name='d_h2_conv')
+        h2r = lrelu(self.d_bn2(h2))
+
+        h3 = conv2d(h2r, self.df_dim*8, name='d_h3_conv')
+        h3r = lrelu(self.d_bn3(h3))
+
+        h4 = linear(tf.reshape(h3r, [self.batch_size, -1]), 1, 'd_h3_lin')
+        h4r = tf.nn.sigmoid(h4)
+
+        if with_act:
+          return h4r, image, h0, h0r, h1, h1r, h2, h2r, h3, h3r, h4
+        else:
+          return h4r
       else:
         yb = tf.reshape(y, [self.batch_size, 1, 1, self.y_dim])
         x = conv_cond_concat(image, yb)
