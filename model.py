@@ -180,8 +180,29 @@ class DCGAN(object):
     sample_z = np.random.uniform(-1, 1, size=(self.sample_num , self.z_dim))
     
     if config.dataset == 'mnist':
-      sample_inputs = self.data_X[0:self.sample_num]
-      sample_labels = self.data_y[0:self.sample_num]
+      #sample_inputs = self.data_X[0:self.sample_num]
+      #sample_labels = self.data_y[0:self.sample_num]
+      
+      # control the input of samples
+      wanted = [1, 4, 7, 9, 0, 2, 3, 5];
+      rowsize = math.sqrt(self.sample_num)
+      idlist = []
+      for wid in range(0, len(wanted)):
+        counter = 0;
+        for idx in range(0, self.data_y.shape[0]):
+          if self.data_y[idx][wanted[wid]]==1:
+            idlist.append(idx)
+            counter += 1
+            if counter==rowsize:
+              break;
+      #for idx in range(0, len(idlist)):
+      #  print idlist[idx], self.data_y[idlist[idx]]
+      sample_inputs = []
+      sample_labels = []
+      for sid in range(0, len(idlist)):
+        sample_inputs.append(self.data_X[idlist[sid]])
+        sample_labels.append(self.data_y[idlist[sid]])
+
     else:
       sample_files = self.data[0:self.sample_num]
       sample = [
