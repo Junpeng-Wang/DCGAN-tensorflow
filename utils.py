@@ -6,6 +6,7 @@ import math
 import json
 import random
 import pprint
+import os
 import scipy.misc
 import numpy as np
 from time import gmtime, strftime
@@ -17,6 +18,14 @@ import tensorflow.contrib.slim as slim
 pp = pprint.PrettyPrinter()
 
 get_stddev = lambda x, k_h, k_w: 1/math.sqrt(k_w*k_h*x.get_shape()[-1])
+
+# data: json object array
+def append_layer(data, name, size, lrdt):
+  layer = {}
+  layer['type'] = name
+  layer['shape'] = size
+  layer['data'] = lrdt.flatten().tolist()
+  data.append(layer)
 
 def show_all_variables():
   model_vars = tf.trainable_variables()
@@ -241,3 +250,63 @@ def visualize(sess, dcgan, config, option):
     new_image_set = [merge(np.array([images[idx] for images in image_set]), [10, 10]) \
         for idx in range(64) + range(63, -1, -1)]
     make_gif(new_image_set, './samples/test_gif_merged.gif', duration=8)
+  elif option == 5: # JP: my version of dump the current state of the D and G
+    directory = '{}/Test'.format(config.sample_dir)
+    if not os.path.exists(directory):
+      os.makedirs(directory)
+
+    values = np.arange(0, 1, 1./config.batch_size)
+    for idx in xrange(1):
+      curdir = '{}/{:04d}'.format(directory, idx)
+      if not os.path.exists(curdir):
+        os.makedirs(curdir)
+
+      print(" [*] %d" % idx)
+      z_sample = np.zeros([config.batch_size, dcgan.z_dim])
+      for kdx, z in enumerate(z_sample):
+        z[idx] = values[kdx]
+
+      if config.dataset == "mnist":
+        y = np.random.choice(10, config.batch_size)
+        y_one_hot = np.zeros((config.batch_size, 10))
+        y_one_hot[np.arange(config.batch_size), y] = 1
+
+        [samples, h0, h0r, h1, h1r, h2, h2r, h3] = sess.run(dcgan.sampler, feed_dict={dcgan.z: z_sample, dcgan.y: y_one_hot})
+        [samplesD_, d_smp_, d_h0_, d_h0r_, d_h1_, d_h1r_, d_h2_, d_h2r_, d_h3_] = sess.run(dcgan.samplerD_, feed_dict={dcgan.G: samples, dcgan.y: y_one_hot})
+
+        # save all G's
+        dirG = '{}/G'.format(curdir)
+        if not os.path.exists(dirG):
+          os.makedirs(dirG)
+        data = [];
+        append_layer(data, 'linear', [64, 32, 32, 1],   h0);
+        append_layer(data, 'relu',   [64, 32, 32, 1],   h0r);
+        append_layer(data, 'linear', [64, 7, 7, 128],   h1);
+        append_layer(data, 'relu',   [64, 7, 7, 128],   h1r);
+        append_layer(data, 'deconv', [64, 14, 14, 128], h2);
+        append_layer(data, 'relu',   [64, 14, 14, 128], h2r);
+        append_layer(data, 'deconv', [64, 28, 28, 1],   h3);
+        append_layer(data, 'sigmoid',[64, 28, 28, 1],   samples);
+        with open('./{}/G_{:04d}.json'.format(dirG, idx), 'w') as f:
+          json.dump(data, f)
+
+        # save all D_'s
+        dirD_ = '{}/D_'.format(curdir)
+        if not os.path.exists(dirD_):
+          os.makedirs(dirD_)
+        dataD_ = [];
+        append_layer(dataD_, 'input',  [64, 28, 28, 1],  d_smp_);
+        append_layer(dataD_, 'conv',   [64, 14, 14, 11], d_h0_);
+        append_layer(dataD_, 'relu',   [64, 14, 14, 11], d_h0r_);
+        append_layer(dataD_, 'conv',   [64, 7, 7, 74],   d_h1_);
+        append_layer(dataD_, 'relu',   [64, 7, 7, 74],   d_h1r_);
+        append_layer(dataD_, 'linear', [64, 32, 32, 1],  d_h2_);
+        append_layer(dataD_, 'relu',   [64, 32, 32, 1],  d_h2r_);
+        append_layer(dataD_, 'linear', [64, 1, 1, 1],    d_h3_);
+        append_layer(dataD_, 'sigmoid',[64, 1, 1, 1],    samplesD_);
+        with open('./{}/F_{:04d}.json'.format(dirD_, idx), 'w') as f:
+          json.dump(dataD_, f)
+      else:
+        [samples, z, h0, h0r, h1, h1r, h2, h2r, h3, h3r, h4] = sess.run(dcgan.sampler, feed_dict={dcgan.z: z_sample})
+
+

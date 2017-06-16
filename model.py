@@ -184,16 +184,19 @@ class DCGAN(object):
       #sample_labels = self.data_y[0:self.sample_num]
       
       # control the input of samples
-      wanted = [1, 4, 7, 9, 0, 2, 3, 5];
+      #wanted = [1, 4, 7, 9, 0, 2, 3, 5];
+      wanted = [1, 1, 1, 1, 1, 1, 1, 1];
       rowsize = math.sqrt(self.sample_num)
       idlist = []
+      accid = 0;
       for wid in range(0, len(wanted)):
         counter = 0;
-        for idx in range(0, self.data_y.shape[0]):
+        for idx in range(accid, self.data_y.shape[0]):
           if self.data_y[idx][wanted[wid]]==1:
             idlist.append(idx)
             counter += 1
             if counter==rowsize:
+              accid = idx+1;
               break;
       #for idx in range(0, len(idlist)):
       #  print idlist[idx], self.data_y[idlist[idx]]
@@ -377,6 +380,7 @@ class DCGAN(object):
             append_layer(data, 'deconv', [64, 14, 14, 128], h2);
             append_layer(data, 'relu',   [64, 14, 14, 128], h2r);
             append_layer(data, 'deconv', [64, 28, 28, 1],   h3);
+            append_layer(data, 'sigmoid', [64, 28, 28, 1],  samples);
 
             with open('./{}/G_{:02d}_{:04d}.json'.format(dirG, epoch, idx), 'w') as f:
               json.dump(data, f)
@@ -396,8 +400,8 @@ class DCGAN(object):
             save_images(np.reshape(d_h2, [64, fc_size, fc_size, 1]), [manifold_h, manifold_w],
                   './{}/T_h2_{:02d}_{:04d}.png'.format(dirD, epoch, idx))
             with open('./{}/T_h3_{:02d}_{:04d}.txt'.format(dirD, epoch, idx), 'w') as f:
-              for i in range(0, d_h3.shape[0]):
-                f.write("%f\n" % d_h3[i, 0]) 
+              for i in range(0, samplesD.shape[0]):
+                f.write("%f\n" % samplesD[i, 0]) 
 
             # save D as a json file
             dataD = [];
@@ -409,6 +413,7 @@ class DCGAN(object):
             append_layer(dataD, 'linear', [64, 32, 32, 1],  d_h2);
             append_layer(dataD, 'relu',   [64, 32, 32, 1],  d_h2r);
             append_layer(dataD, 'linear', [64, 1, 1, 1],    d_h3);
+            append_layer(dataD, 'sigmoid', [64, 1, 1, 1],  samplesD);
 
             with open('./{}/T_{:02d}_{:04d}.json'.format(dirD, epoch, idx), 'w') as f:
               json.dump(dataD, f)
@@ -428,8 +433,8 @@ class DCGAN(object):
             save_images(np.reshape(d_h2_, [64, fc_size, fc_size, 1]), [manifold_h, manifold_w],
                   './{}/F_h2_{:02d}_{:04d}.png'.format(dirD_, epoch, idx))
             with open('./{}/F_h3_{:02d}_{:04d}.txt'.format(dirD_, epoch, idx), 'w') as f:
-              for i in range(0, d_h3_.shape[0]):
-                f.write("%f\n" % d_h3_[i, 0]) 
+              for i in range(0, samplesD_.shape[0]):
+                f.write("%f\n" % samplesD_[i, 0]) 
 
             # save D_ as a json file
             dataD_ = [];
@@ -442,6 +447,7 @@ class DCGAN(object):
             append_layer(dataD_, 'linear', [64, 32, 32, 1],  d_h2_);
             append_layer(dataD_, 'relu',   [64, 32, 32, 1],  d_h2r_);
             append_layer(dataD_, 'linear', [64, 1, 1, 1],    d_h3_);
+            append_layer(dataD_, 'sigmoid', [64, 1, 1, 1],  samplesD_);
 
             with open('./{}/F_{:02d}_{:04d}.json'.format(dirD_, epoch, idx), 'w') as f:
               json.dump(dataD_, f)
@@ -660,13 +666,13 @@ class DCGAN(object):
         h0r = lrelu(h0)
 
         h1 = conv2d(h0r, self.df_dim*2, name='d_h1_conv')
-        h1r = lrelu(self.d_bn1(h1))
+        h1r = lrelu(self.d_bn1(h1, train=False))
 
         h2 = conv2d(h1r, self.df_dim*4, name='d_h2_conv')
-        h2r = lrelu(self.d_bn2(h2))
+        h2r = lrelu(self.d_bn2(h2, train=False))
 
         h3 = conv2d(h2r, self.df_dim*8, name='d_h3_conv')
-        h3r = lrelu(self.d_bn3(h3))
+        h3r = lrelu(self.d_bn3(h3, train=False))
 
         h4 = linear(tf.reshape(h3r, [self.batch_size, -1]), 1, 'd_h3_lin')
         h4r = tf.nn.sigmoid(h4)
@@ -684,12 +690,12 @@ class DCGAN(object):
         h0 = conv_cond_concat(h0r, yb)
 
         h1_ = conv2d(h0, self.df_dim + self.y_dim, name='d_h1_conv')
-        h1r = lrelu(self.d_bn1(h1_))
+        h1r = lrelu(self.d_bn1(h1_, train=False))
         h1 = tf.reshape(h1r, [self.batch_size, -1])      
         h1 = concat([h1, y], 1)
         
         h2_ = linear(h1, self.dfc_dim, 'd_h2_lin')
-        h2r = lrelu(self.d_bn2(h2_))
+        h2r = lrelu(self.d_bn2(h2_, train=False))
         h2 = concat([h2r, y], 1)
 
         h3_ = linear(h2, 1, 'd_h3_lin')
