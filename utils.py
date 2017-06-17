@@ -256,18 +256,21 @@ def visualize(sess, dcgan, config, option):
       os.makedirs(directory)
 
     values = np.arange(0, 1, 1./config.batch_size)
-    for idx in xrange(1):
+    for idx in xrange(3):
+      digit = 0;
       curdir = '{}/{:04d}'.format(directory, idx)
       if not os.path.exists(curdir):
         os.makedirs(curdir)
 
       print(" [*] %d" % idx)
-      z_sample = np.zeros([config.batch_size, dcgan.z_dim])
-      for kdx, z in enumerate(z_sample):
-        z[idx] = values[kdx]
+      #z_sample = np.zeros([config.batch_size, dcgan.z_dim])
+      #for kdx, z in enumerate(z_sample):
+      #  z[idx] = values[kdx]
+      z_sample = np.random.uniform(-1, 1, size=(config.batch_size , dcgan.z_dim))
 
       if config.dataset == "mnist":
-        y = np.random.choice(10, config.batch_size)
+        #y = np.random.choice(10, config.batch_size)
+        y = np.full((config.batch_size), digit, dtype=np.int)
         y_one_hot = np.zeros((config.batch_size, 10))
         y_one_hot[np.arange(config.batch_size), y] = 1
 
@@ -289,6 +292,7 @@ def visualize(sess, dcgan, config, option):
         append_layer(data, 'sigmoid',[64, 28, 28, 1],   samples);
         with open('./{}/G_{:04d}.json'.format(dirG, idx), 'w') as f:
           json.dump(data, f)
+        save_images(samples, [image_frame_dim, image_frame_dim], './{}/G_{:04d}.png'.format(dirG, idx))
 
         # save all D_'s
         dirD_ = '{}/D_'.format(curdir)
@@ -306,6 +310,26 @@ def visualize(sess, dcgan, config, option):
         append_layer(dataD_, 'sigmoid',[64, 1, 1, 1],    samplesD_);
         with open('./{}/F_{:04d}.json'.format(dirD_, idx), 'w') as f:
           json.dump(dataD_, f)
+
+        bz = 64;
+        scale = 20;
+        result = np.zeros((bz,scale,scale,1))
+        for ii in xrange(bz):
+          for jj in xrange(scale):
+            for kk in xrange(scale):
+              if samplesD_[ii]>0.5:
+                result[ii, jj, kk, 0] = 1;
+              else:
+                result[ii, jj, kk, 0] = 0;
+
+        save_images(result, [image_frame_dim, image_frame_dim], './{}/F_{:04d}.png'.format(dirD_, idx))
+        tn = 0; fn = 0;
+        for ii in xrange(bz):
+          if samplesD_[ii]>0.5:
+            tn = tn+1;
+          else:
+            fn = fn+1;
+        print tn, fn;
       else:
         [samples, z, h0, h0r, h1, h1r, h2, h2r, h3, h3r, h4] = sess.run(dcgan.sampler, feed_dict={dcgan.z: z_sample})
 

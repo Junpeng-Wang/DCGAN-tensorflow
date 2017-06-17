@@ -72,7 +72,7 @@ class DCGAN(object):
     self.checkpoint_dir = checkpoint_dir
 
     if self.dataset_name == 'mnist':
-      self.data_X, self.data_y = self.load_mnist() #(70000, 28, 28, 1), (70000, 10)
+      self.data_X, self.data_y = self.load_mnist_w_digit(0) #(70000, 28, 28, 1), (70000, 10)
       self.c_dim = self.data_X[0].shape[-1]
     else:
       self.data = glob(os.path.join("./data", self.dataset_name, self.input_fname_pattern))
@@ -183,9 +183,9 @@ class DCGAN(object):
       #sample_inputs = self.data_X[0:self.sample_num]
       #sample_labels = self.data_y[0:self.sample_num]
       
+      '''
       # control the input of samples
-      #wanted = [1, 4, 7, 9, 0, 2, 3, 5];
-      wanted = [1, 1, 1, 1, 1, 1, 1, 1];
+      wanted = [1, 4, 7, 9, 0, 2, 3, 5];
       rowsize = math.sqrt(self.sample_num)
       idlist = []
       accid = 0;
@@ -198,13 +198,12 @@ class DCGAN(object):
             if counter==rowsize:
               accid = idx+1;
               break;
-      #for idx in range(0, len(idlist)):
-      #  print idlist[idx], self.data_y[idlist[idx]]
       sample_inputs = []
       sample_labels = []
       for sid in range(0, len(idlist)):
         sample_inputs.append(self.data_X[idlist[sid]])
         sample_labels.append(self.data_y[idlist[sid]])
+      '''
 
     else:
       sample_files = self.data[0:self.sample_num]
@@ -325,6 +324,87 @@ class DCGAN(object):
 
         if np.mod(counter, 3) == 1:
           if config.dataset == 'mnist':
+            d_loss = errD_fake+errD_real
+            g_loss = errG;
+
+            g_d_smp = None;
+            g_d_h0r = None;
+            g_d_h1r = None;
+            g_d_h2r = None;
+            g_samplesD = None;
+            for itr in xrange(5):
+              sample_inputs = self.data_X[itr*self.sample_num : (itr+1)*self.sample_num]
+              sample_labels = self.data_y[itr*self.sample_num : (itr+1)*self.sample_num]
+
+              [samplesD, d_smp, d_h0, d_h0r, d_h1, d_h1r, d_h2, d_h2r, d_h3] = self.sess.run(self.samplerD, 
+                feed_dict={
+                  self.inputs: sample_inputs,
+                  self.y: sample_labels,
+                }
+              )
+
+              if itr==0:
+                g_d_smp = d_smp;
+                g_d_h0r = d_h0r;
+                g_d_h1r = d_h1r;
+                g_d_h2r = d_h2r.reshape(64,32,32,1);
+                g_samplesD = samplesD;
+              else:
+                g_d_smp = np.concatenate([g_d_smp, d_smp], 0);
+                g_d_h0r = concat([g_d_h0r, d_h0r], 0);
+                g_d_h1r = concat([g_d_h1r, d_h1r], 0);
+                g_d_h2r = concat([g_d_h2r, d_h2r.reshape(64,32,32,1)], 0);
+                g_samplesD = np.concatenate([g_samplesD, samplesD], 0);
+
+            #use the new order to sort the five array along the first dimension
+            g_spD = np.array(g_samplesD).flatten().tolist();
+            #idxodr = sorted(range(len(g_spD)), key=lambda k: g_spD[k]);
+            print g_spD;
+            idxodr = np.argsort(g_spD);
+
+            print idxodr;
+            print g_d_smp.shape
+            #print idxodr.shape
+            #g_d_smp = np.sort(g_d_smp, axis=0, order=idxodr)
+            g_d_smp = g_d_smp[idxodr];
+            g_d_h0r = g_d_h0r[idxodr];
+            g_d_h1r = g_d_h1r[idxodr];
+            g_d_h2r = g_d_h2r[idxodr];
+            g_samplesD = g_samplesD[idxodr];
+            print g_d_smp.shape
+
+            '''
+            for itr in xrange(5):
+              manifold_h = int(np.ceil(np.sqrt(d_smp.shape[0])))
+              manifold_w = int(np.floor(np.sqrt(d_smp.shape[0])))
+              fc_size = int(np.sqrt(self.gfc_dim))
+
+              directory = '{}/{:04d}'.format(config.sample_dir, counter)
+              if not os.path.exists(directory):
+                os.makedirs(directory)
+
+              # save the activation map of D
+              print g_d_smp.shape
+              dirD = '{}/D'.format(directory)
+              if not os.path.exists(dirD):
+                os.makedirs(dirD)
+              save_images(g_d_smp[itr*self.sample_num:(itr+1)*self.sample_num,:,:,:], [manifold_h, manifold_w],
+                    './{}/T_img_{:02d}_{:04d}_{:03d}.png'.format(dirD, epoch, idx, itr))
+              with open('./{}/T_h3_{:02d}_{:04d}_{:03d}.txt'.format(dirD, epoch, idx, itr), 'w') as f:
+                for i in range(0, d_smp.shape[0]):
+                  f.write("%f\n" % g_samplesD[itr*self.sample_num+i, 0]) 
+              # save D as a json file
+              dataD = [];
+              append_layer(dataD, 'input', [64, 28, 28, 1],  d_smp);
+              append_layer(dataD, 'relu',   [64, 14, 14, 11],  d_h0r);
+              append_layer(dataD, 'relu',   [64, 7, 7, 74],   d_h1r);
+              append_layer(dataD, 'relu',   [64, 32, 32, 1],  d_h2r);
+              append_layer(dataD, 'sigmoid', [64, 1, 1, 1],  samplesD);
+              with open('./{}/T_{:02d}_{:04d}_{:03d}.json'.format(dirD, epoch, idx, itr), 'w') as f:
+                json.dump(dataD, f)
+              '''
+
+            '''
             [samples, h0, h0r, h1, h1r, h2, h2r, h3], d_loss, g_loss = self.sess.run(
               [self.sampler, self.d_loss, self.g_loss],
               feed_dict={
@@ -346,6 +426,7 @@ class DCGAN(object):
 
             manifold_h = int(np.ceil(np.sqrt(samples.shape[0])))
             manifold_w = int(np.floor(np.sqrt(samples.shape[0])))
+            fc_size = int(np.sqrt(self.gfc_dim))
 
             directory = '{}/{:04d}'.format(config.sample_dir, counter)
             if not os.path.exists(directory):
@@ -354,11 +435,9 @@ class DCGAN(object):
             dirG = '{}/G'.format(directory)
             if not os.path.exists(dirG):
               os.makedirs(dirG)
-
             # save the activation map of G
             save_images(samples, [manifold_h, manifold_w],
                   './{}/G_smp_{:02d}_{:04d}.png'.format(dirG, epoch, idx))
-            fc_size = int(np.sqrt(self.gfc_dim))
             save_images(np.reshape(h0, [64, fc_size, fc_size, 1]), [manifold_h, manifold_w],
                   './{}/G_h0_{:02d}_{:04d}.png'.format(dirG, epoch, idx))
             for ii in range(0, h1.shape[-1]):
@@ -369,10 +448,8 @@ class DCGAN(object):
                   './{}/G_h2_{:02d}_{:04d}_{:03d}.png'.format(dirG, epoch, idx, ii))
             save_images(h3, [manifold_h, manifold_w],
                   './{}/G_h3_{:02d}_{:04d}.png'.format(dirG, epoch, idx))
-
             # save G as a json file
             data = [];
-
             append_layer(data, 'linear', [64, 32, 32, 1],   h0);
             append_layer(data, 'relu',   [64, 32, 32, 1],   h0r);
             append_layer(data, 'linear', [64, 7, 7, 128],   h1);
@@ -381,10 +458,9 @@ class DCGAN(object):
             append_layer(data, 'relu',   [64, 14, 14, 128], h2r);
             append_layer(data, 'deconv', [64, 28, 28, 1],   h3);
             append_layer(data, 'sigmoid', [64, 28, 28, 1],  samples);
-
             with open('./{}/G_{:02d}_{:04d}.json'.format(dirG, epoch, idx), 'w') as f:
               json.dump(data, f)
-
+            
             # save the activation map of D
             dirD = '{}/D'.format(directory)
             if not os.path.exists(dirD):
@@ -402,7 +478,6 @@ class DCGAN(object):
             with open('./{}/T_h3_{:02d}_{:04d}.txt'.format(dirD, epoch, idx), 'w') as f:
               for i in range(0, samplesD.shape[0]):
                 f.write("%f\n" % samplesD[i, 0]) 
-
             # save D as a json file
             dataD = [];
             append_layer(dataD, 'input', [64, 28, 28, 1],  d_smp);
@@ -414,7 +489,6 @@ class DCGAN(object):
             append_layer(dataD, 'relu',   [64, 32, 32, 1],  d_h2r);
             append_layer(dataD, 'linear', [64, 1, 1, 1],    d_h3);
             append_layer(dataD, 'sigmoid', [64, 1, 1, 1],  samplesD);
-
             with open('./{}/T_{:02d}_{:04d}.json'.format(dirD, epoch, idx), 'w') as f:
               json.dump(dataD, f)
 
@@ -435,10 +509,8 @@ class DCGAN(object):
             with open('./{}/F_h3_{:02d}_{:04d}.txt'.format(dirD_, epoch, idx), 'w') as f:
               for i in range(0, samplesD_.shape[0]):
                 f.write("%f\n" % samplesD_[i, 0]) 
-
             # save D_ as a json file
             dataD_ = [];
-
             append_layer(dataD_, 'input', [64, 28, 28, 1],  d_smp_);
             append_layer(dataD_, 'conv',   [64, 14, 14, 11], d_h0_);
             append_layer(dataD_, 'relu',   [64, 14, 14, 11],  d_h0r_);
@@ -448,10 +520,10 @@ class DCGAN(object):
             append_layer(dataD_, 'relu',   [64, 32, 32, 1],  d_h2r_);
             append_layer(dataD_, 'linear', [64, 1, 1, 1],    d_h3_);
             append_layer(dataD_, 'sigmoid', [64, 1, 1, 1],  samplesD_);
-
             with open('./{}/F_{:02d}_{:04d}.json'.format(dirD_, epoch, idx), 'w') as f:
               json.dump(dataD_, f)
-
+            '''
+            
             print("[Sample] d_loss: %.8f, g_loss: %.8f" % (d_loss, g_loss))
 
           else:
@@ -865,6 +937,57 @@ class DCGAN(object):
       y_vec[i,y[i]] = 1.0
     
     return X/255.,y_vec
+
+
+  def load_mnist_w_digit(self, digit):
+    data_dir = os.path.join("./data", self.dataset_name)
+    
+    fd = open(os.path.join(data_dir,'train-images-idx3-ubyte'))
+    loaded = np.fromfile(file=fd,dtype=np.uint8)
+    trX = loaded[16:].reshape((60000,28,28,1)).astype(np.float)
+
+    fd = open(os.path.join(data_dir,'train-labels-idx1-ubyte'))
+    loaded = np.fromfile(file=fd,dtype=np.uint8)
+    trY = loaded[8:].reshape((60000)).astype(np.float)
+
+    fd = open(os.path.join(data_dir,'t10k-images-idx3-ubyte'))
+    loaded = np.fromfile(file=fd,dtype=np.uint8)
+    teX = loaded[16:].reshape((10000,28,28,1)).astype(np.float)
+
+    fd = open(os.path.join(data_dir,'t10k-labels-idx1-ubyte'))
+    loaded = np.fromfile(file=fd,dtype=np.uint8)
+    teY = loaded[8:].reshape((10000)).astype(np.float)
+
+    trY = np.asarray(trY)
+    teY = np.asarray(teY)
+    
+    X = np.concatenate((trX, teX), axis=0)
+    y = np.concatenate((trY, teY), axis=0).astype(np.int)
+    
+    seed = 547
+    np.random.seed(seed)
+    np.random.shuffle(X)
+    np.random.seed(seed)
+    np.random.shuffle(y)
+    
+    y_vec = np.zeros((len(y), self.y_dim), dtype=np.float)
+    for i, label in enumerate(y):
+      y_vec[i,y[i]] = 1.0
+    
+
+    sel = []
+    for i in xrange(len(y)):
+      if y[i]==digit:
+        sel.append(True)
+      else:
+        sel.append(False)
+
+    XD = X[sel];
+    XD = XD[0:6400];
+    yD_vec = y_vec[sel];
+    yD_vec = yD_vec[0:6400];
+  
+    return XD/255.,yD_vec
 
   @property
   def model_dir(self):
