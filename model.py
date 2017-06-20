@@ -1,5 +1,6 @@
 from __future__ import division
 import os
+import os.path
 import time
 import math
 from glob import glob
@@ -324,7 +325,6 @@ class DCGAN(object):
 
         num_sps = 640;
         num_bch = int(num_sps/self.sample_num);
-        print num_bch;
         if np.mod(counter, 3) == 1:
           if config.dataset == 'mnist':
             d_loss = errD_fake+errD_real
@@ -540,8 +540,17 @@ class DCGAN(object):
               json.dump(dataD_, f)
             '''
             
-            print("[Sample] d_loss: %.8f, g_loss: %.8f" % (d_loss, g_loss))
-
+            print("[Sample] d_loss: %.8f, g_loss: %.8f" % (d_loss, g_loss));
+            # also save the loss to file
+            fname = '{}/loss.csv'.format(config.sample_dir)
+            fexist = os.path.isfile(fname);
+            if not fexist:
+              with open(fname, 'w') as f:
+                f.write("iteration,d_loss,g_loss\n")
+                f.write('{:d},{:.8f},{:.8f}\n'.format(counter, d_loss, g_loss));
+            else:# append to the existing file
+              with open(fname, 'a') as f:
+                f.write('{:d},{:.8f},{:.8f}\n'.format(counter, d_loss, g_loss));
           else:
             try:
               [samples, z, h0, h0r, h1, h1r, h2, h2r, h3, h3r, h4], d_loss, g_loss = self.sess.run(
