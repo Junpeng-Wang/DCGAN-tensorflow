@@ -322,6 +322,9 @@ class DCGAN(object):
           % (epoch, idx, batch_idxs,
             time.time() - start_time, errD_fake+errD_real, errG))
 
+        num_sps = 640;
+        num_bch = int(num_sps/self.sample_num);
+        print num_bch;
         if np.mod(counter, 3) == 1:
           if config.dataset == 'mnist':
             d_loss = errD_fake+errD_real
@@ -332,7 +335,7 @@ class DCGAN(object):
             g_d_h1r = None;
             g_d_h2r = None;
             g_samplesD = None;
-            for itr in xrange(5):
+            for itr in xrange(num_bch):
               sample_inputs = self.data_X[itr*self.sample_num : (itr+1)*self.sample_num]
               sample_labels = self.data_y[itr*self.sample_num : (itr+1)*self.sample_num]
 
@@ -351,30 +354,24 @@ class DCGAN(object):
                 g_samplesD = samplesD;
               else:
                 g_d_smp = np.concatenate([g_d_smp, d_smp], 0);
-                g_d_h0r = concat([g_d_h0r, d_h0r], 0);
-                g_d_h1r = concat([g_d_h1r, d_h1r], 0);
-                g_d_h2r = concat([g_d_h2r, d_h2r.reshape(64,32,32,1)], 0);
+                g_d_h0r = np.concatenate([g_d_h0r, d_h0r], 0);
+                g_d_h1r = np.concatenate([g_d_h1r, d_h1r], 0);
+                g_d_h2r = np.concatenate([g_d_h2r, d_h2r.reshape(64,32,32,1)], 0);
                 g_samplesD = np.concatenate([g_samplesD, samplesD], 0);
 
             #use the new order to sort the five array along the first dimension
             g_spD = np.array(g_samplesD).flatten().tolist();
-            #idxodr = sorted(range(len(g_spD)), key=lambda k: g_spD[k]);
-            print g_spD;
             idxodr = np.argsort(g_spD);
 
-            print idxodr;
-            print g_d_smp.shape
-            #print idxodr.shape
-            #g_d_smp = np.sort(g_d_smp, axis=0, order=idxodr)
+            # reorder
             g_d_smp = g_d_smp[idxodr];
             g_d_h0r = g_d_h0r[idxodr];
             g_d_h1r = g_d_h1r[idxodr];
             g_d_h2r = g_d_h2r[idxodr];
             g_samplesD = g_samplesD[idxodr];
-            print g_d_smp.shape
 
-            '''
-            for itr in xrange(5):
+            # save the reordered results
+            for itr in xrange(num_bch):
               manifold_h = int(np.ceil(np.sqrt(d_smp.shape[0])))
               manifold_w = int(np.floor(np.sqrt(d_smp.shape[0])))
               fc_size = int(np.sqrt(self.gfc_dim))
@@ -384,25 +381,39 @@ class DCGAN(object):
                 os.makedirs(directory)
 
               # save the activation map of D
-              print g_d_smp.shape
               dirD = '{}/D'.format(directory)
               if not os.path.exists(dirD):
                 os.makedirs(dirD)
               save_images(g_d_smp[itr*self.sample_num:(itr+1)*self.sample_num,:,:,:], [manifold_h, manifold_w],
                     './{}/T_img_{:02d}_{:04d}_{:03d}.png'.format(dirD, epoch, idx, itr))
+              '''
               with open('./{}/T_h3_{:02d}_{:04d}_{:03d}.txt'.format(dirD, epoch, idx, itr), 'w') as f:
                 for i in range(0, d_smp.shape[0]):
                   f.write("%f\n" % g_samplesD[itr*self.sample_num+i, 0]) 
               # save D as a json file
               dataD = [];
-              append_layer(dataD, 'input', [64, 28, 28, 1],  d_smp);
-              append_layer(dataD, 'relu',   [64, 14, 14, 11],  d_h0r);
-              append_layer(dataD, 'relu',   [64, 7, 7, 74],   d_h1r);
-              append_layer(dataD, 'relu',   [64, 32, 32, 1],  d_h2r);
-              append_layer(dataD, 'sigmoid', [64, 1, 1, 1],  samplesD);
+              append_layer(dataD, 'input', [64, 28, 28, 1],  g_d_smp[itr*self.sample_num:(itr+1)*self.sample_num,:,:,:]);
+              append_layer(dataD, 'relu',   [64, 14, 14, 11],  g_d_h0r[itr*self.sample_num:(itr+1)*self.sample_num,:,:,:]);
+              append_layer(dataD, 'relu',   [64, 7, 7, 74],   g_d_h1r[itr*self.sample_num:(itr+1)*self.sample_num,:,:,:]);
+              append_layer(dataD, 'relu',   [64, 32, 32, 1],  g_d_h2r[itr*self.sample_num:(itr+1)*self.sample_num,:,:,:]);
+              append_layer(dataD, 'sigmoid', [64, 1, 1, 1],  g_samplesD[itr*self.sample_num:(itr+1)*self.sample_num,0]);
               with open('./{}/T_{:02d}_{:04d}_{:03d}.json'.format(dirD, epoch, idx, itr), 'w') as f:
                 json.dump(dataD, f)
               '''
+
+            dataD = [];
+            append_layer(dataD, 'input', [num_sps, 28, 28, 1],  g_d_smp);
+            append_layer(dataD, 'relu',  [num_sps, 14, 14, 11],  g_d_h0r);
+            append_layer(dataD, 'relu',  [num_sps, 7, 7, 74],   g_d_h1r);
+            append_layer(dataD, 'relu',  [num_sps, 32, 32, 1],  g_d_h2r);
+            append_layer(dataD, 'sigmoid', [num_sps, 1, 1, 1],  g_samplesD);
+            with open('./{}/T_{:02d}_{:04d}.json'.format(dirD, epoch, idx), 'w') as f:
+              json.dump(dataD, f)
+
+            with open('./{}/prob_{:02d}_{:04d}.csv'.format(dirD, epoch, idx), 'w') as f:
+              f.write("n_odr,o_odr,prob\n")
+              for i in range(0, num_sps):
+                f.write('{:d},{:d},{:f}\n'.format(i, idxodr[i], g_samplesD[i,0]));
 
             '''
             [samples, h0, h0r, h1, h1r, h2, h2r, h3], d_loss, g_loss = self.sess.run(
