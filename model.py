@@ -359,16 +359,19 @@ class DCGAN(object):
                 g_d_h2r = np.concatenate([g_d_h2r, d_h2r.reshape(64,32,32,1)], 0);
                 g_samplesD = np.concatenate([g_samplesD, samplesD], 0);
 
+            
             #use the new order to sort the five array along the first dimension
             g_spD = np.array(g_samplesD).flatten().tolist();
             idxodr = np.argsort(g_spD);
-
+            
+            '''  
             # reorder
             g_d_smp = g_d_smp[idxodr];
             g_d_h0r = g_d_h0r[idxodr];
             g_d_h1r = g_d_h1r[idxodr];
             g_d_h2r = g_d_h2r[idxodr];
             g_samplesD = g_samplesD[idxodr];
+            '''
 
             # save the reordered results
             for itr in xrange(num_bch):
@@ -401,6 +404,7 @@ class DCGAN(object):
                 json.dump(dataD, f)
               '''
 
+            # the json data all use original order, but the csv saves ordered data
             dataD = [];
             append_layer(dataD, 'input', [num_sps, 28, 28, 1],  g_d_smp);
             append_layer(dataD, 'relu',  [num_sps, 14, 14, 11],  g_d_h0r);
@@ -410,6 +414,7 @@ class DCGAN(object):
             with open('./{}/T_{:02d}_{:04d}.json'.format(dirD, epoch, idx), 'w') as f:
               json.dump(dataD, f)
 
+            g_samplesD = g_samplesD[idxodr];
             with open('./{}/prob_{:02d}_{:04d}.csv'.format(dirD, epoch, idx), 'w') as f:
               f.write("n_odr,o_odr,prob\n")
               for i in range(0, num_sps):
