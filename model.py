@@ -73,7 +73,9 @@ class DCGAN(object):
     self.checkpoint_dir = checkpoint_dir
 
     if self.dataset_name == 'mnist':
-      self.data_X, self.data_y = self.load_mnist_w_digit(0) #(70000, 28, 28, 1), (70000, 10)
+      #self.data_X, self.data_y = self.load_mnist_w_digit(0) #(70000, 28, 28, 1), (70000, 10)
+      self.data_Xsmp, self.data_ysmp = self.load_mnist_w_digit(1)
+      self.data_X, self.data_y = self.load_mnist()
       self.c_dim = self.data_X[0].shape[-1]
     else:
       self.data = glob(os.path.join("./data", self.dataset_name, self.input_fname_pattern))
@@ -180,10 +182,14 @@ class DCGAN(object):
 
     sample_z = np.random.uniform(-1, 1, size=(self.sample_num , self.z_dim))
     
+    num_sps = 640;
+    num_bch = int(num_sps/self.sample_num);
     if config.dataset == 'mnist':
-      #sample_inputs = self.data_X[0:self.sample_num]
-      #sample_labels = self.data_y[0:self.sample_num]
-      
+      '''
+      # original random sample input
+      sample_inputs = self.data_X[0:self.sample_num]
+      sample_labels = self.data_y[0:self.sample_num]
+      '''
       '''
       # control the input of samples
       wanted = [1, 4, 7, 9, 0, 2, 3, 5];
@@ -205,7 +211,9 @@ class DCGAN(object):
         sample_inputs.append(self.data_X[idlist[sid]])
         sample_labels.append(self.data_y[idlist[sid]])
       '''
-
+      # fixed input with a certain digit
+      smp_z = np.random.uniform(-1, 1, size=(num_sps , self.z_dim))
+      
     else:
       sample_files = self.data[0:self.sample_num]
       sample = [
@@ -323,21 +331,52 @@ class DCGAN(object):
           % (epoch, idx, batch_idxs,
             time.time() - start_time, errD_fake+errD_real, errG))
 
-        num_sps = 640;
-        num_bch = int(num_sps/self.sample_num);
         if np.mod(counter, 3) == 1:
           if config.dataset == 'mnist':
-            d_loss = errD_fake+errD_real
-            g_loss = errG;
+            dd_loss = errD_fake+errD_real
+            gg_loss = errG;
 
+            g_h0r = None;
+            g_h1r = None;
+            g_h2r = None;
+            g_samples = None;
             g_d_smp = None;
             g_d_h0r = None;
             g_d_h1r = None;
             g_d_h2r = None;
             g_samplesD = None;
+            g_d_smp_ = None;
+            g_d_h0r_ = None;
+            g_d_h1r_ = None;
+            g_d_h2r_ = None;
+            g_samplesD_ = None;
             for itr in xrange(num_bch):
-              sample_inputs = self.data_X[itr*self.sample_num : (itr+1)*self.sample_num]
-              sample_labels = self.data_y[itr*self.sample_num : (itr+1)*self.sample_num]
+              sample_inputs = self.data_Xsmp[itr*self.sample_num : (itr+1)*self.sample_num]
+              sample_labels = self.data_ysmp[itr*self.sample_num : (itr+1)*self.sample_num]
+              sample_zz = smp_z[itr*self.sample_num : (itr+1)*self.sample_num];
+
+              [samples, h0, h0r, h1, h1r, h2, h2r, h3] = self.sess.run(self.sampler,
+                feed_dict={
+                    self.z: sample_zz,
+                    self.y: sample_labels,
+                }
+              )
+              '''
+              [samples, h0, h0r, h1, h1r, h2, h2r, h3], d_loss, g_loss = self.sess.run(
+                [self.sampler, self.d_loss, self.g_loss],
+                feed_dict={
+                    self.z: sample_zz,
+                    self.inputs: sample_inputs,
+                    self.y:sample_labels,
+                }
+              )'''
+
+              [samplesD_, d_smp_, d_h0_, d_h0r_, d_h1_, d_h1r_, d_h2_, d_h2r_, d_h3_] = self.sess.run(self.samplerD_, 
+                feed_dict={
+                  self.G: samples,
+                  self.y: sample_labels,
+                }
+              )
 
               [samplesD, d_smp, d_h0, d_h0r, d_h1, d_h1r, d_h2, d_h2r, d_h3] = self.sess.run(self.samplerD, 
                 feed_dict={
@@ -347,23 +386,50 @@ class DCGAN(object):
               )
 
               if itr==0:
+                # layers of G
+                #g_hz = hz;
+                g_h0r = h0r.reshape(64,32,32,1);
+                g_h1r = h1r;
+                g_h2r = h2r;
+                g_samples = samples;
+                # layers of D
                 g_d_smp = d_smp;
                 g_d_h0r = d_h0r;
                 g_d_h1r = d_h1r;
                 g_d_h2r = d_h2r.reshape(64,32,32,1);
                 g_samplesD = samplesD;
+                # layers of D_
+                g_d_smp_ = d_smp_;
+                g_d_h0r_ = d_h0r_;
+                g_d_h1r_ = d_h1r_;
+                g_d_h2r_ = d_h2r_.reshape(64,32,32,1);
+                g_samplesD_ = samplesD_;
               else:
+                #layers of G
+                #g_hz = np.concatenate(g_hz, hz); # don't need the 100 rand z
+                g_h0r = np.concatenate([g_h0r, h0r.reshape(64,32,32,1)], 0);
+                g_h1r = np.concatenate([g_h1r, h1r], 0);
+                g_h2r = np.concatenate([g_h2r, h2r], 0);
+                g_samples = np.concatenate([g_samples, samples], 0);
+                #layers of D
                 g_d_smp = np.concatenate([g_d_smp, d_smp], 0);
                 g_d_h0r = np.concatenate([g_d_h0r, d_h0r], 0);
                 g_d_h1r = np.concatenate([g_d_h1r, d_h1r], 0);
                 g_d_h2r = np.concatenate([g_d_h2r, d_h2r.reshape(64,32,32,1)], 0);
                 g_samplesD = np.concatenate([g_samplesD, samplesD], 0);
-
+                #layers of D_
+                g_d_smp_ = np.concatenate([g_d_smp_, d_smp_], 0);
+                g_d_h0r_ = np.concatenate([g_d_h0r_, d_h0r_], 0);
+                g_d_h1r_ = np.concatenate([g_d_h1r_, d_h1r_], 0);
+                g_d_h2r_ = np.concatenate([g_d_h2r_, d_h2r_.reshape(64,32,32,1)], 0);
+                g_samplesD_ = np.concatenate([g_samplesD_, samplesD_], 0);
             
             #use the new order to sort the five array along the first dimension
             g_spD = np.array(g_samplesD).flatten().tolist();
             idxodr = np.argsort(g_spD);
             
+            g_spD_ = np.array(g_samplesD_).flatten().tolist();
+            idxodr_ = np.argsort(g_spD_);
             '''  
             # reorder
             g_d_smp = g_d_smp[idxodr];
@@ -383,13 +449,26 @@ class DCGAN(object):
               if not os.path.exists(directory):
                 os.makedirs(directory)
 
+              # save the activation map of G
+              dirG = '{}/G'.format(directory)
+              if not os.path.exists(dirG):
+                os.makedirs(dirG)
+              save_images(g_samples[itr*self.sample_num:(itr+1)*self.sample_num,:,:,:], [manifold_h, manifold_w],
+                    './{}/G_img_{:02d}_{:04d}_{:03d}.png'.format(dirG, epoch, idx, itr))
               # save the activation map of D
               dirD = '{}/D'.format(directory)
               if not os.path.exists(dirD):
                 os.makedirs(dirD)
               save_images(g_d_smp[itr*self.sample_num:(itr+1)*self.sample_num,:,:,:], [manifold_h, manifold_w],
                     './{}/T_img_{:02d}_{:04d}_{:03d}.png'.format(dirD, epoch, idx, itr))
+              # save the activation map of D_
+              dirD_ = '{}/D_'.format(directory)
+              if not os.path.exists(dirD_):
+                os.makedirs(dirD_)
+              save_images(g_d_smp_[itr*self.sample_num:(itr+1)*self.sample_num,:,:,:], [manifold_h, manifold_w],
+                    './{}/F_img_{:02d}_{:04d}_{:03d}.png'.format(dirD_, epoch, idx, itr))
               '''
+              # SAVE THE ORDERED LAYERS
               with open('./{}/T_h3_{:02d}_{:04d}_{:03d}.txt'.format(dirD, epoch, idx, itr), 'w') as f:
                 for i in range(0, d_smp.shape[0]):
                   f.write("%f\n" % g_samplesD[itr*self.sample_num+i, 0]) 
@@ -414,12 +493,26 @@ class DCGAN(object):
             with open('./{}/T_{:02d}_{:04d}.json'.format(dirD, epoch, idx), 'w') as f:
               json.dump(dataD, f)
 
+            dataD_ = [];
+            append_layer(dataD_, 'input', [num_sps, 28, 28, 1],  g_d_smp_);
+            append_layer(dataD_, 'relu',  [num_sps, 14, 14, 11],  g_d_h0r_);
+            append_layer(dataD_, 'relu',  [num_sps, 7, 7, 74],   g_d_h1r_);
+            append_layer(dataD_, 'relu',  [num_sps, 32, 32, 1],  g_d_h2r_);
+            append_layer(dataD_, 'sigmoid', [num_sps, 1, 1, 1],  g_samplesD_);
+            with open('./{}/F_{:02d}_{:04d}.json'.format(dirD_, epoch, idx), 'w') as f:
+              json.dump(dataD_, f)
+
             g_samplesD = g_samplesD[idxodr];
-            with open('./{}/prob_{:02d}_{:04d}.csv'.format(dirD, epoch, idx), 'w') as f:
+            with open('./{}/t_prob_{:02d}_{:04d}.csv'.format(dirD, epoch, idx), 'w') as f:
               f.write("n_odr,o_odr,prob\n")
               for i in range(0, num_sps):
                 f.write('{:d},{:d},{:f}\n'.format(i, idxodr[i], g_samplesD[i,0]));
 
+            g_samplesD_ = g_samplesD_[idxodr_];
+            with open('./{}/f_prob_{:02d}_{:04d}.csv'.format(dirD_, epoch, idx), 'w') as f:
+              f.write("n_odr,o_odr,prob\n")
+              for i in range(0, num_sps):
+                f.write('{:d},{:d},{:f}\n'.format(i, idxodr_[i], g_samplesD_[i,0]));
             '''
             [samples, h0, h0r, h1, h1r, h2, h2r, h3], d_loss, g_loss = self.sess.run(
               [self.sampler, self.d_loss, self.g_loss],
@@ -540,17 +633,17 @@ class DCGAN(object):
               json.dump(dataD_, f)
             '''
             
-            print("[Sample] d_loss: %.8f, g_loss: %.8f" % (d_loss, g_loss));
+            print("[Sample] d_loss: %.8f, g_loss: %.8f" % (dd_loss, gg_loss));
             # also save the loss to file
             fname = '{}/loss.csv'.format(config.sample_dir)
             fexist = os.path.isfile(fname);
             if not fexist:
               with open(fname, 'w') as f:
                 f.write("iteration,d_loss,g_loss\n")
-                f.write('{:d},{:.8f},{:.8f}\n'.format(counter, d_loss, g_loss));
+                f.write('{:d},{:.8f},{:.8f}\n'.format(counter, dd_loss, gg_loss));
             else:# append to the existing file
               with open(fname, 'a') as f:
-                f.write('{:d},{:.8f},{:.8f}\n'.format(counter, d_loss, g_loss));
+                f.write('{:d},{:.8f},{:.8f}\n'.format(counter, dd_loss, gg_loss));
           else:
             try:
               [samples, z, h0, h0r, h1, h1r, h2, h2r, h3, h3r, h4], d_loss, g_loss = self.sess.run(
@@ -1008,6 +1101,7 @@ class DCGAN(object):
         sel.append(False)
 
     XD = X[sel];
+    print len(XD);
     XD = XD[0:6400];
     yD_vec = y_vec[sel];
     yD_vec = yD_vec[0:6400];
