@@ -182,7 +182,7 @@ class DCGAN(object):
 
     sample_z = np.random.uniform(-1, 1, size=(self.sample_num , self.z_dim))
     
-    num_sps = 640;
+    num_sps = 320;
     num_bch = int(num_sps/self.sample_num);
     if config.dataset == 'mnist':
       '''
@@ -450,11 +450,11 @@ class DCGAN(object):
                 os.makedirs(directory)
 
               # save the activation map of G
-              dirG = '{}/G'.format(directory)
-              if not os.path.exists(dirG):
-                os.makedirs(dirG)
-              save_images(g_samples[itr*self.sample_num:(itr+1)*self.sample_num,:,:,:], [manifold_h, manifold_w],
-                    './{}/G_img_{:02d}_{:04d}_{:03d}.png'.format(dirG, epoch, idx, itr))
+              #dirG = '{}/G'.format(directory)
+              #if not os.path.exists(dirG):
+              #  os.makedirs(dirG)
+              #save_images(g_samples[itr*self.sample_num:(itr+1)*self.sample_num,:,:,:], [manifold_h, manifold_w],
+              #      './{}/G_img_{:02d}_{:04d}_{:03d}.png'.format(dirG, epoch, idx, itr))
               # save the activation map of D
               dirD = '{}/D'.format(directory)
               if not os.path.exists(dirD):
@@ -1091,14 +1091,11 @@ class DCGAN(object):
     y_vec = np.zeros((len(y), self.y_dim), dtype=np.float)
     for i, label in enumerate(y):
       y_vec[i,y[i]] = 1.0
-    
 
     sel = []
     for i in xrange(len(y)):
       if y[i]==digit:
-        sel.append(True)
-      else:
-        sel.append(False)
+        sel.append(i)
 
     XD = X[sel];
     print len(XD);
