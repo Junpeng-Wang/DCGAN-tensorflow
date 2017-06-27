@@ -8,6 +8,7 @@ import tensorflow as tf
 import numpy as np
 from six.moves import xrange
 import json
+import csv
 
 from ops import *
 from utils import *
@@ -181,9 +182,9 @@ class DCGAN(object):
     self.writer = SummaryWriter("./logs", self.sess.graph)
 
     sample_z = np.random.uniform(-1, 1, size=(self.sample_num , self.z_dim))
-    
     num_sps = 320;
     num_bch = int(num_sps/self.sample_num);
+    smp_z = np.random.uniform(-1, 1, size=(num_sps , self.z_dim));
     if config.dataset == 'mnist':
       '''
       # original random sample input
@@ -211,9 +212,29 @@ class DCGAN(object):
         sample_inputs.append(self.data_X[idlist[sid]])
         sample_labels.append(self.data_y[idlist[sid]])
       '''
-      # fixed input with a certain digit
-      smp_z = np.random.uniform(-1, 1, size=(num_sps , self.z_dim))
-      
+      # fixed the input random vector
+      fname = './data/randomz.csv';
+      fexist = os.path.isfile(fname);
+      if fexist: # load from the file
+        with open(fname) as f:
+          spamreader = csv.reader(f)
+          rowidx = 0;
+          for row in spamreader:
+            for j in range(0, self.z_dim):
+              smp_z[rowidx][j] = row[j];
+            rowidx += 1;
+      else: # the randomz already exist
+        smp_z = np.random.uniform(-1, 1, size=(num_sps , self.z_dim))
+
+        with open(fname, 'w') as f:
+          for i in range(0, num_sps):
+            for j in range(0, self.z_dim):
+              f.write('{:f}'.format(smp_z[i][j]));
+              if j==self.z_dim-1:
+                f.write('\n');
+              else:
+                f.write(',');
+
     else:
       sample_files = self.data[0:self.sample_num]
       sample = [
