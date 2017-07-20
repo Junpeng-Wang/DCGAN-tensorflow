@@ -223,7 +223,7 @@ class DCGAN(object):
             for j in range(0, self.z_dim):
               smp_z[rowidx][j] = row[j];
             rowidx += 1;
-      else: # the randomz already exist
+      else: # the randomz does not exist
         smp_z = np.random.uniform(-1, 1, size=(num_sps , self.z_dim))
 
         with open(fname, 'w') as f:
@@ -352,7 +352,8 @@ class DCGAN(object):
           % (epoch, idx, batch_idxs,
             time.time() - start_time, errD_fake+errD_real, errG))
 
-        if np.mod(counter, 3) == 1:
+        #if np.mod(counter, 3) == 1:
+        if np.mod(idx, 100)==0 and idx!=0:
           if config.dataset == 'mnist':
             dd_loss = errD_fake+errD_real
             gg_loss = errG;
@@ -392,16 +393,16 @@ class DCGAN(object):
                 }
               )'''
 
-              [samplesD_, d_smp_, d_h0_, d_h0r_, d_h1_, d_h1r_, d_h2_, d_h2r_, d_h3_] = self.sess.run(self.samplerD_, 
+              [samplesD, d_smp, d_h0, d_h0r, d_h1, d_h1r, d_h2, d_h2r, d_h3] = self.sess.run(self.samplerD, 
                 feed_dict={
-                  self.G: samples,
+                  self.inputs: sample_inputs,
                   self.y: sample_labels,
                 }
               )
 
-              [samplesD, d_smp, d_h0, d_h0r, d_h1, d_h1r, d_h2, d_h2r, d_h3] = self.sess.run(self.samplerD, 
+              [samplesD_, d_smp_, d_h0_, d_h0r_, d_h1_, d_h1r_, d_h2_, d_h2r_, d_h3_] = self.sess.run(self.samplerD_, 
                 feed_dict={
-                  self.inputs: sample_inputs,
+                  self.G: samples,
                   self.y: sample_labels,
                 }
               )
@@ -459,16 +460,20 @@ class DCGAN(object):
             g_d_h2r = g_d_h2r[idxodr];
             g_samplesD = g_samplesD[idxodr];
             '''
-
+            
+            directory = '{}'.format(config.sample_dir)
+            dirD = directory
+            dirD_ = directory
+            '''
             # save the reordered results
-            for itr in xrange(num_bch):
-              manifold_h = int(np.ceil(np.sqrt(d_smp.shape[0])))
-              manifold_w = int(np.floor(np.sqrt(d_smp.shape[0])))
-              fc_size = int(np.sqrt(self.gfc_dim))
+            #for itr in xrange(num_bch):
+              #manifold_h = int(np.ceil(np.sqrt(d_smp.shape[0])))
+              #manifold_w = int(np.floor(np.sqrt(d_smp.shape[0])))
+              #fc_size = int(np.sqrt(self.gfc_dim))
 
-              directory = '{}/{:04d}'.format(config.sample_dir, counter)
-              if not os.path.exists(directory):
-                os.makedirs(directory)
+              #directory = '{}/{:02d}_{:04d}'.format(config.sample_dir, epoch, idx)
+              #if not os.path.exists(directory):
+              #  os.makedirs(directory)
 
               # save the activation map of G
               #dirG = '{}/G'.format(directory)
@@ -477,18 +482,19 @@ class DCGAN(object):
               #save_images(g_samples[itr*self.sample_num:(itr+1)*self.sample_num,:,:,:], [manifold_h, manifold_w],
               #      './{}/G_img_{:02d}_{:04d}_{:03d}.png'.format(dirG, epoch, idx, itr))
               # save the activation map of D
-              dirD = '{}/D'.format(directory)
-              if not os.path.exists(dirD):
-                os.makedirs(dirD)
-              save_images(g_d_smp[itr*self.sample_num:(itr+1)*self.sample_num,:,:,:], [manifold_h, manifold_w],
-                    './{}/T_img_{:02d}_{:04d}_{:03d}.png'.format(dirD, epoch, idx, itr))
+              #dirD = '{}/D'.format(directory)
+              #if not os.path.exists(dirD):
+              #  os.makedirs(dirD)
+              #save_images(g_d_smp[itr*self.sample_num:(itr+1)*self.sample_num,:,:,:], [manifold_h, manifold_w],
+              #      './{}/T_img_{:02d}_{:04d}_{:03d}.png'.format(dirD, epoch, idx, itr))
               # save the activation map of D_
-              dirD_ = '{}/D_'.format(directory)
-              if not os.path.exists(dirD_):
-                os.makedirs(dirD_)
-              save_images(g_d_smp_[itr*self.sample_num:(itr+1)*self.sample_num,:,:,:], [manifold_h, manifold_w],
-                    './{}/F_img_{:02d}_{:04d}_{:03d}.png'.format(dirD_, epoch, idx, itr))
-              '''
+              #dirD_ = '{}/D_'.format(directory)
+              #if not os.path.exists(dirD_):
+              #  os.makedirs(dirD_)
+              #save_images(g_d_smp_[itr*self.sample_num:(itr+1)*self.sample_num,:,:,:], [manifold_h, manifold_w],
+              #      './{}/F_img_{:02d}_{:04d}_{:03d}.png'.format(dirD_, epoch, idx, itr))
+            '''
+            '''
               # SAVE THE ORDERED LAYERS
               with open('./{}/T_h3_{:02d}_{:04d}_{:03d}.txt'.format(dirD, epoch, idx, itr), 'w') as f:
                 for i in range(0, d_smp.shape[0]):
@@ -502,7 +508,7 @@ class DCGAN(object):
               append_layer(dataD, 'sigmoid', [64, 1, 1, 1],  g_samplesD[itr*self.sample_num:(itr+1)*self.sample_num,0]);
               with open('./{}/T_{:02d}_{:04d}_{:03d}.json'.format(dirD, epoch, idx, itr), 'w') as f:
                 json.dump(dataD, f)
-              '''
+            '''
 
             # the json data all use original order, but the csv saves ordered data
             dataD = [];
@@ -661,10 +667,30 @@ class DCGAN(object):
             if not fexist:
               with open(fname, 'w') as f:
                 f.write("iteration,d_loss,g_loss\n")
-                f.write('{:d},{:.8f},{:.8f}\n'.format(counter, dd_loss, gg_loss));
+                f.write('{:d},{:.8f},{:.8f}\n'.format(counter-2, dd_loss, gg_loss));
             else:# append to the existing file
               with open(fname, 'a') as f:
-                f.write('{:d},{:.8f},{:.8f}\n'.format(counter, dd_loss, gg_loss));
+                f.write('{:d},{:.8f},{:.8f}\n'.format(counter-2, dd_loss, gg_loss));
+
+            # save model parameters
+            print "saving parameters"
+            dir_para = directory
+            #dir_para = '{}/para'.format(directory)
+            if not os.path.exists(dir_para):
+              os.makedirs(dir_para)
+            for var in self.d_vars:
+              varname = var.name
+              varname = varname.split("/")
+              name2 = varname[2].split(":");
+
+              tmpva = var.eval()
+              tmpva = tmpva.flatten().tolist();
+
+              pname = '{}/{}_{}_{:02d}_{:04d}.csv'.format(dir_para, varname[1], name2[0], epoch, idx);
+              with open(pname, 'w') as f:
+                f.write('value\n');
+                for valen in range(0, len(tmpva)):
+                  f.write('{:.8f}\n'.format(tmpva[valen]));
           else:
             try:
               [samples, z, h0, h0r, h1, h1r, h2, h2r, h3, h3r, h4], d_loss, g_loss = self.sess.run(
@@ -687,7 +713,7 @@ class DCGAN(object):
               manifold_h = int(np.ceil(np.sqrt(samples.shape[0])))
               manifold_w = int(np.floor(np.sqrt(samples.shape[0])))
 
-              directory = '{}/{:04d}'.format(config.sample_dir, counter)
+              directory = '{}/{:04d}'.format(config.sample_dir, counter-2)
               if not os.path.exists(directory):
                 os.makedirs(directory)
 
@@ -823,6 +849,7 @@ class DCGAN(object):
             except:
               print("one pic error!...")
 
+        # save checkpoint
         if np.mod(counter, 500) == 2:
           self.save(config.checkpoint_dir, counter)
 
@@ -1119,10 +1146,7 @@ class DCGAN(object):
         sel.append(i)
 
     XD = X[sel];
-    print len(XD);
-    XD = XD[0:6400];
     yD_vec = y_vec[sel];
-    yD_vec = yD_vec[0:6400];
   
     return XD/255.,yD_vec
 
