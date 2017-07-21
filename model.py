@@ -74,8 +74,7 @@ class DCGAN(object):
     self.checkpoint_dir = checkpoint_dir
 
     if self.dataset_name == 'mnist':
-      #self.data_X, self.data_y = self.load_mnist_w_digit(0) #(70000, 28, 28, 1), (70000, 10)
-      self.data_Xsmp, self.data_ysmp = self.load_mnist_w_digit(1)
+      #self.data_Xsmp, self.data_ysmp = self.load_mnist_w_digit(0)
       self.data_X, self.data_y = self.load_mnist()
       self.c_dim = self.data_X[0].shape[-1]
     else:
@@ -352,317 +351,157 @@ class DCGAN(object):
           % (epoch, idx, batch_idxs,
             time.time() - start_time, errD_fake+errD_real, errG))
 
-        #if np.mod(counter, 3) == 1:
-        if np.mod(idx, 100)==0 and idx!=0:
+        if np.mod(idx, 100)==0:
+        #if np.mod(idx, 100)==0 and idx!=0:
           if config.dataset == 'mnist':
             dd_loss = errD_fake+errD_real
             gg_loss = errG;
 
-            g_h0r = None;
-            g_h1r = None;
-            g_h2r = None;
-            g_samples = None;
-            g_d_smp = None;
-            g_d_h0r = None;
-            g_d_h1r = None;
-            g_d_h2r = None;
-            g_samplesD = None;
-            g_d_smp_ = None;
-            g_d_h0r_ = None;
-            g_d_h1r_ = None;
-            g_d_h2r_ = None;
-            g_samplesD_ = None;
-            for itr in xrange(num_bch):
-              sample_inputs = self.data_Xsmp[itr*self.sample_num : (itr+1)*self.sample_num]
-              sample_labels = self.data_ysmp[itr*self.sample_num : (itr+1)*self.sample_num]
-              sample_zz = smp_z[itr*self.sample_num : (itr+1)*self.sample_num];
+            ##########repeat for 10 digits##########
+            for dgt in range(0, 10):
+              self.data_Xsmp, self.data_ysmp = self.load_mnist_w_digit(dgt)
+              g_h0r = None;
+              g_h1r = None;
+              g_h2r = None;
+              g_samples = None;
+              g_d_smp = None;
+              g_d_h0r = None;
+              g_d_h1r = None;
+              g_d_h2r = None;
+              g_samplesD = None;
+              g_d_smp_ = None;
+              g_d_h0r_ = None;
+              g_d_h1r_ = None;
+              g_d_h2r_ = None;
+              g_samplesD_ = None;
+              for itr in xrange(num_bch):
+                sample_inputs = self.data_Xsmp[itr*self.sample_num : (itr+1)*self.sample_num]
+                sample_labels = self.data_ysmp[itr*self.sample_num : (itr+1)*self.sample_num]
+                sample_zz = smp_z[itr*self.sample_num : (itr+1)*self.sample_num];
 
-              [samples, h0, h0r, h1, h1r, h2, h2r, h3] = self.sess.run(self.sampler,
-                feed_dict={
-                    self.z: sample_zz,
-                    self.y: sample_labels,
-                }
-              )
-              '''
-              [samples, h0, h0r, h1, h1r, h2, h2r, h3], d_loss, g_loss = self.sess.run(
-                [self.sampler, self.d_loss, self.g_loss],
-                feed_dict={
-                    self.z: sample_zz,
+                [samples, h0, h0r, h1, h1r, h2, h2r, h3] = self.sess.run(self.sampler,
+                  feed_dict={
+                      self.z: sample_zz,
+                      self.y: sample_labels,
+                  }
+                )
+
+                [samplesD, d_smp, d_h0, d_h0r, d_h1, d_h1r, d_h2, d_h2r, d_h3] = self.sess.run(self.samplerD, 
+                  feed_dict={
                     self.inputs: sample_inputs,
-                    self.y:sample_labels,
-                }
-              )'''
+                    self.y: sample_labels,
+                  }
+                )
 
-              [samplesD, d_smp, d_h0, d_h0r, d_h1, d_h1r, d_h2, d_h2r, d_h3] = self.sess.run(self.samplerD, 
-                feed_dict={
-                  self.inputs: sample_inputs,
-                  self.y: sample_labels,
-                }
-              )
+                [samplesD_, d_smp_, d_h0_, d_h0r_, d_h1_, d_h1r_, d_h2_, d_h2r_, d_h3_] = self.sess.run(self.samplerD_, 
+                  feed_dict={
+                    self.G: samples,
+                    self.y: sample_labels,
+                  }
+                )
 
-              [samplesD_, d_smp_, d_h0_, d_h0r_, d_h1_, d_h1r_, d_h2_, d_h2r_, d_h3_] = self.sess.run(self.samplerD_, 
-                feed_dict={
-                  self.G: samples,
-                  self.y: sample_labels,
-                }
-              )
+                if itr==0:
+                  # layers of G
+                  #g_hz = hz;
+                  g_h0r = h0r.reshape(64,32,32,1);
+                  g_h1r = h1r;
+                  g_h2r = h2r;
+                  g_samples = samples;
+                  # layers of D
+                  g_d_smp = d_smp;
+                  g_d_h0r = d_h0r;
+                  g_d_h1r = d_h1r;
+                  g_d_h2r = d_h2r.reshape(64,32,32,1);
+                  g_samplesD = samplesD;
+                  # layers of D_
+                  g_d_smp_ = d_smp_;
+                  g_d_h0r_ = d_h0r_;
+                  g_d_h1r_ = d_h1r_;
+                  g_d_h2r_ = d_h2r_.reshape(64,32,32,1);
+                  g_samplesD_ = samplesD_;
+                else:
+                  #layers of G
+                  #g_hz = np.concatenate(g_hz, hz); # don't need the 100 rand z
+                  g_h0r = np.concatenate([g_h0r, h0r.reshape(64,32,32,1)], 0);
+                  g_h1r = np.concatenate([g_h1r, h1r], 0);
+                  g_h2r = np.concatenate([g_h2r, h2r], 0);
+                  g_samples = np.concatenate([g_samples, samples], 0);
+                  #layers of D
+                  g_d_smp = np.concatenate([g_d_smp, d_smp], 0);
+                  g_d_h0r = np.concatenate([g_d_h0r, d_h0r], 0);
+                  g_d_h1r = np.concatenate([g_d_h1r, d_h1r], 0);
+                  g_d_h2r = np.concatenate([g_d_h2r, d_h2r.reshape(64,32,32,1)], 0);
+                  g_samplesD = np.concatenate([g_samplesD, samplesD], 0);
+                  #layers of D_
+                  g_d_smp_ = np.concatenate([g_d_smp_, d_smp_], 0);
+                  g_d_h0r_ = np.concatenate([g_d_h0r_, d_h0r_], 0);
+                  g_d_h1r_ = np.concatenate([g_d_h1r_, d_h1r_], 0);
+                  g_d_h2r_ = np.concatenate([g_d_h2r_, d_h2r_.reshape(64,32,32,1)], 0);
+                  g_samplesD_ = np.concatenate([g_samplesD_, samplesD_], 0);
+              
+              #use the new order to sort the five array along the first dimension
+              g_spD = np.array(g_samplesD).flatten().tolist();
+              idxodr = np.argsort(g_spD);
+              
+              g_spD_ = np.array(g_samplesD_).flatten().tolist();
+              idxodr_ = np.argsort(g_spD_);
 
-              if itr==0:
-                # layers of G
-                #g_hz = hz;
-                g_h0r = h0r.reshape(64,32,32,1);
-                g_h1r = h1r;
-                g_h2r = h2r;
-                g_samples = samples;
-                # layers of D
-                g_d_smp = d_smp;
-                g_d_h0r = d_h0r;
-                g_d_h1r = d_h1r;
-                g_d_h2r = d_h2r.reshape(64,32,32,1);
-                g_samplesD = samplesD;
-                # layers of D_
-                g_d_smp_ = d_smp_;
-                g_d_h0r_ = d_h0r_;
-                g_d_h1r_ = d_h1r_;
-                g_d_h2r_ = d_h2r_.reshape(64,32,32,1);
-                g_samplesD_ = samplesD_;
-              else:
-                #layers of G
-                #g_hz = np.concatenate(g_hz, hz); # don't need the 100 rand z
-                g_h0r = np.concatenate([g_h0r, h0r.reshape(64,32,32,1)], 0);
-                g_h1r = np.concatenate([g_h1r, h1r], 0);
-                g_h2r = np.concatenate([g_h2r, h2r], 0);
-                g_samples = np.concatenate([g_samples, samples], 0);
-                #layers of D
-                g_d_smp = np.concatenate([g_d_smp, d_smp], 0);
-                g_d_h0r = np.concatenate([g_d_h0r, d_h0r], 0);
-                g_d_h1r = np.concatenate([g_d_h1r, d_h1r], 0);
-                g_d_h2r = np.concatenate([g_d_h2r, d_h2r.reshape(64,32,32,1)], 0);
-                g_samplesD = np.concatenate([g_samplesD, samplesD], 0);
-                #layers of D_
-                g_d_smp_ = np.concatenate([g_d_smp_, d_smp_], 0);
-                g_d_h0r_ = np.concatenate([g_d_h0r_, d_h0r_], 0);
-                g_d_h1r_ = np.concatenate([g_d_h1r_, d_h1r_], 0);
-                g_d_h2r_ = np.concatenate([g_d_h2r_, d_h2r_.reshape(64,32,32,1)], 0);
-                g_samplesD_ = np.concatenate([g_samplesD_, samplesD_], 0);
-            
-            #use the new order to sort the five array along the first dimension
-            g_spD = np.array(g_samplesD).flatten().tolist();
-            idxodr = np.argsort(g_spD);
-            
-            g_spD_ = np.array(g_samplesD_).flatten().tolist();
-            idxodr_ = np.argsort(g_spD_);
-            '''  
-            # reorder
-            g_d_smp = g_d_smp[idxodr];
-            g_d_h0r = g_d_h0r[idxodr];
-            g_d_h1r = g_d_h1r[idxodr];
-            g_d_h2r = g_d_h2r[idxodr];
-            g_samplesD = g_samplesD[idxodr];
-            '''
-            
-            directory = '{}'.format(config.sample_dir)
-            dirD = directory
-            dirD_ = directory
-            '''
-            # save the reordered results
-            #for itr in xrange(num_bch):
-              #manifold_h = int(np.ceil(np.sqrt(d_smp.shape[0])))
-              #manifold_w = int(np.floor(np.sqrt(d_smp.shape[0])))
-              #fc_size = int(np.sqrt(self.gfc_dim))
+              directory = '{}'.format(config.sample_dir)
+              dgtdir = '{}/{:01d}'.format(config.sample_dir, dgt)
+              if not os.path.exists(dgtdir):
+                os.makedirs(dgtdir)
+              dirD = dgtdir
+              dirD_ = dgtdir
 
-              #directory = '{}/{:02d}_{:04d}'.format(config.sample_dir, epoch, idx)
-              #if not os.path.exists(directory):
-              #  os.makedirs(directory)
+              #for itr in xrange(num_bch):
+              #save one image
+              manifold_h = int(np.ceil(np.sqrt(d_smp.shape[0])))
+              manifold_w = int(np.floor(np.sqrt(d_smp.shape[0])))
+              fc_size = int(np.sqrt(self.gfc_dim))
 
-              # save the activation map of G
-              #dirG = '{}/G'.format(directory)
-              #if not os.path.exists(dirG):
-              #  os.makedirs(dirG)
-              #save_images(g_samples[itr*self.sample_num:(itr+1)*self.sample_num,:,:,:], [manifold_h, manifold_w],
-              #      './{}/G_img_{:02d}_{:04d}_{:03d}.png'.format(dirG, epoch, idx, itr))
-              # save the activation map of D
-              #dirD = '{}/D'.format(directory)
-              #if not os.path.exists(dirD):
-              #  os.makedirs(dirD)
-              #save_images(g_d_smp[itr*self.sample_num:(itr+1)*self.sample_num,:,:,:], [manifold_h, manifold_w],
-              #      './{}/T_img_{:02d}_{:04d}_{:03d}.png'.format(dirD, epoch, idx, itr))
+              itr = 0# save one image is enough, but you can save all five itr to see the trend
+              save_images(g_d_smp[itr*self.sample_num:(itr+1)*self.sample_num,:,:,:], [manifold_h, manifold_w],
+                    './{}/T_img_{:02d}_{:04d}_{:03d}.png'.format(dirD, epoch, idx, itr))
               # save the activation map of D_
-              #dirD_ = '{}/D_'.format(directory)
-              #if not os.path.exists(dirD_):
-              #  os.makedirs(dirD_)
-              #save_images(g_d_smp_[itr*self.sample_num:(itr+1)*self.sample_num,:,:,:], [manifold_h, manifold_w],
-              #      './{}/F_img_{:02d}_{:04d}_{:03d}.png'.format(dirD_, epoch, idx, itr))
-            '''
-            '''
-              # SAVE THE ORDERED LAYERS
-              with open('./{}/T_h3_{:02d}_{:04d}_{:03d}.txt'.format(dirD, epoch, idx, itr), 'w') as f:
-                for i in range(0, d_smp.shape[0]):
-                  f.write("%f\n" % g_samplesD[itr*self.sample_num+i, 0]) 
-              # save D as a json file
+              save_images(g_d_smp_[itr*self.sample_num:(itr+1)*self.sample_num,:,:,:], [manifold_h, manifold_w],
+                    './{}/F_img_{:02d}_{:04d}_{:03d}.png'.format(dirD_, epoch, idx, itr))
+              #######
+
+              # the json data all use original order, but the csv saves ordered data
               dataD = [];
-              append_layer(dataD, 'input', [64, 28, 28, 1],  g_d_smp[itr*self.sample_num:(itr+1)*self.sample_num,:,:,:]);
-              append_layer(dataD, 'relu',   [64, 14, 14, 11],  g_d_h0r[itr*self.sample_num:(itr+1)*self.sample_num,:,:,:]);
-              append_layer(dataD, 'relu',   [64, 7, 7, 74],   g_d_h1r[itr*self.sample_num:(itr+1)*self.sample_num,:,:,:]);
-              append_layer(dataD, 'relu',   [64, 32, 32, 1],  g_d_h2r[itr*self.sample_num:(itr+1)*self.sample_num,:,:,:]);
-              append_layer(dataD, 'sigmoid', [64, 1, 1, 1],  g_samplesD[itr*self.sample_num:(itr+1)*self.sample_num,0]);
-              with open('./{}/T_{:02d}_{:04d}_{:03d}.json'.format(dirD, epoch, idx, itr), 'w') as f:
+              append_layer(dataD, 'input', [num_sps, 28, 28, 1],  g_d_smp);
+              append_layer(dataD, 'relu',  [num_sps, 14, 14, 11],  g_d_h0r);
+              append_layer(dataD, 'relu',  [num_sps, 7, 7, 74],   g_d_h1r);
+              append_layer(dataD, 'relu',  [num_sps, 32, 32, 1],  g_d_h2r);
+              append_layer(dataD, 'sigmoid', [num_sps, 1, 1, 1],  g_samplesD);
+              with open('./{}/T_{:02d}_{:04d}.json'.format(dirD, epoch, idx), 'w') as f:
                 json.dump(dataD, f)
-            '''
 
-            # the json data all use original order, but the csv saves ordered data
-            dataD = [];
-            append_layer(dataD, 'input', [num_sps, 28, 28, 1],  g_d_smp);
-            append_layer(dataD, 'relu',  [num_sps, 14, 14, 11],  g_d_h0r);
-            append_layer(dataD, 'relu',  [num_sps, 7, 7, 74],   g_d_h1r);
-            append_layer(dataD, 'relu',  [num_sps, 32, 32, 1],  g_d_h2r);
-            append_layer(dataD, 'sigmoid', [num_sps, 1, 1, 1],  g_samplesD);
-            with open('./{}/T_{:02d}_{:04d}.json'.format(dirD, epoch, idx), 'w') as f:
-              json.dump(dataD, f)
+              dataD_ = [];
+              append_layer(dataD_, 'input', [num_sps, 28, 28, 1],  g_d_smp_);
+              append_layer(dataD_, 'relu',  [num_sps, 14, 14, 11],  g_d_h0r_);
+              append_layer(dataD_, 'relu',  [num_sps, 7, 7, 74],   g_d_h1r_);
+              append_layer(dataD_, 'relu',  [num_sps, 32, 32, 1],  g_d_h2r_);
+              append_layer(dataD_, 'sigmoid', [num_sps, 1, 1, 1],  g_samplesD_);
+              with open('./{}/F_{:02d}_{:04d}.json'.format(dirD_, epoch, idx), 'w') as f:
+                json.dump(dataD_, f)
 
-            dataD_ = [];
-            append_layer(dataD_, 'input', [num_sps, 28, 28, 1],  g_d_smp_);
-            append_layer(dataD_, 'relu',  [num_sps, 14, 14, 11],  g_d_h0r_);
-            append_layer(dataD_, 'relu',  [num_sps, 7, 7, 74],   g_d_h1r_);
-            append_layer(dataD_, 'relu',  [num_sps, 32, 32, 1],  g_d_h2r_);
-            append_layer(dataD_, 'sigmoid', [num_sps, 1, 1, 1],  g_samplesD_);
-            with open('./{}/F_{:02d}_{:04d}.json'.format(dirD_, epoch, idx), 'w') as f:
-              json.dump(dataD_, f)
+              g_samplesD = g_samplesD[idxodr];
+              with open('./{}/t_prob_{:02d}_{:04d}.csv'.format(dirD, epoch, idx), 'w') as f:
+                f.write("n_odr,o_odr,prob\n")
+                for i in range(0, num_sps):
+                  f.write('{:d},{:d},{:f}\n'.format(i, idxodr[i], g_samplesD[i,0]));
 
-            g_samplesD = g_samplesD[idxodr];
-            with open('./{}/t_prob_{:02d}_{:04d}.csv'.format(dirD, epoch, idx), 'w') as f:
-              f.write("n_odr,o_odr,prob\n")
-              for i in range(0, num_sps):
-                f.write('{:d},{:d},{:f}\n'.format(i, idxodr[i], g_samplesD[i,0]));
+              g_samplesD_ = g_samplesD_[idxodr_];
+              with open('./{}/f_prob_{:02d}_{:04d}.csv'.format(dirD_, epoch, idx), 'w') as f:
+                f.write("n_odr,o_odr,prob\n")
+                for i in range(0, num_sps):
+                  f.write('{:d},{:d},{:f}\n'.format(i, idxodr_[i], g_samplesD_[i,0]));
+            ################end repeating for 10 digits############
 
-            g_samplesD_ = g_samplesD_[idxodr_];
-            with open('./{}/f_prob_{:02d}_{:04d}.csv'.format(dirD_, epoch, idx), 'w') as f:
-              f.write("n_odr,o_odr,prob\n")
-              for i in range(0, num_sps):
-                f.write('{:d},{:d},{:f}\n'.format(i, idxodr_[i], g_samplesD_[i,0]));
-            '''
-            [samples, h0, h0r, h1, h1r, h2, h2r, h3], d_loss, g_loss = self.sess.run(
-              [self.sampler, self.d_loss, self.g_loss],
-              feed_dict={
-                  self.z: sample_z,
-                  self.inputs: sample_inputs,
-                  self.y:sample_labels,
-              }
-            )
-
-            [samplesD, d_smp, d_h0, d_h0r, d_h1, d_h1r, d_h2, d_h2r, d_h3], \
-              [samplesD_, d_smp_, d_h0_, d_h0r_, d_h1_, d_h1r_, d_h2_, d_h2r_, d_h3_] = self.sess.run(
-              [self.samplerD, self.samplerD_], 
-              feed_dict={
-                self.inputs: sample_inputs,
-                self.y: sample_labels,
-                self.G: samples,
-              }
-            )
-
-            manifold_h = int(np.ceil(np.sqrt(samples.shape[0])))
-            manifold_w = int(np.floor(np.sqrt(samples.shape[0])))
-            fc_size = int(np.sqrt(self.gfc_dim))
-
-            directory = '{}/{:04d}'.format(config.sample_dir, counter)
-            if not os.path.exists(directory):
-              os.makedirs(directory)
-
-            dirG = '{}/G'.format(directory)
-            if not os.path.exists(dirG):
-              os.makedirs(dirG)
-            # save the activation map of G
-            save_images(samples, [manifold_h, manifold_w],
-                  './{}/G_smp_{:02d}_{:04d}.png'.format(dirG, epoch, idx))
-            save_images(np.reshape(h0, [64, fc_size, fc_size, 1]), [manifold_h, manifold_w],
-                  './{}/G_h0_{:02d}_{:04d}.png'.format(dirG, epoch, idx))
-            for ii in range(0, h1.shape[-1]):
-              save_images(np.reshape(h1[:,:,:,ii], [h1.shape[0],h1.shape[1],h1.shape[2], 1]), [manifold_h, manifold_w],
-                  './{}/G_h1_{:02d}_{:04d}_{:03d}.png'.format(dirG, epoch, idx, ii))
-            for ii in range(0, h2.shape[-1]):
-              save_images(np.reshape(h2[:,:,:,ii], [h2.shape[0],h2.shape[1],h2.shape[2], 1]), [manifold_h, manifold_w],
-                  './{}/G_h2_{:02d}_{:04d}_{:03d}.png'.format(dirG, epoch, idx, ii))
-            save_images(h3, [manifold_h, manifold_w],
-                  './{}/G_h3_{:02d}_{:04d}.png'.format(dirG, epoch, idx))
-            # save G as a json file
-            data = [];
-            append_layer(data, 'linear', [64, 32, 32, 1],   h0);
-            append_layer(data, 'relu',   [64, 32, 32, 1],   h0r);
-            append_layer(data, 'linear', [64, 7, 7, 128],   h1);
-            append_layer(data, 'relu',   [64, 7, 7, 128],   h1r);
-            append_layer(data, 'deconv', [64, 14, 14, 128], h2);
-            append_layer(data, 'relu',   [64, 14, 14, 128], h2r);
-            append_layer(data, 'deconv', [64, 28, 28, 1],   h3);
-            append_layer(data, 'sigmoid', [64, 28, 28, 1],  samples);
-            with open('./{}/G_{:02d}_{:04d}.json'.format(dirG, epoch, idx), 'w') as f:
-              json.dump(data, f)
-            
-            # save the activation map of D
-            dirD = '{}/D'.format(directory)
-            if not os.path.exists(dirD):
-              os.makedirs(dirD)
-            save_images(d_smp, [manifold_h, manifold_w],
-                  './{}/T_img_{:02d}_{:04d}.png'.format(dirD, epoch, idx))
-            for ii in range(0, d_h0.shape[-1]):
-              save_images(np.reshape(d_h0[:,:,:,ii], [d_h0.shape[0],d_h0.shape[1],d_h0.shape[2], 1]), [manifold_h, manifold_w],
-                  './{}/T_h0_{:02d}_{:04d}_{:03d}.png'.format(dirD, epoch, idx, ii))
-            for ii in range(0, d_h1.shape[-1]):
-              save_images(np.reshape(d_h1[:,:,:,ii], [d_h1.shape[0],d_h1.shape[1],d_h1.shape[2], 1]), [manifold_h, manifold_w],
-                  './{}/T_h1_{:02d}_{:04d}_{:03d}.png'.format(dirD, epoch, idx, ii))
-            save_images(np.reshape(d_h2, [64, fc_size, fc_size, 1]), [manifold_h, manifold_w],
-                  './{}/T_h2_{:02d}_{:04d}.png'.format(dirD, epoch, idx))
-            with open('./{}/T_h3_{:02d}_{:04d}.txt'.format(dirD, epoch, idx), 'w') as f:
-              for i in range(0, samplesD.shape[0]):
-                f.write("%f\n" % samplesD[i, 0]) 
-            # save D as a json file
-            dataD = [];
-            append_layer(dataD, 'input', [64, 28, 28, 1],  d_smp);
-            append_layer(dataD, 'conv',   [64, 14, 14, 11], d_h0);
-            append_layer(dataD, 'relu',   [64, 14, 14, 11],  d_h0r);
-            append_layer(dataD, 'conv',   [64, 7, 7, 74],   d_h1);
-            append_layer(dataD, 'relu',   [64, 7, 7, 74],   d_h1r);
-            append_layer(dataD, 'linear', [64, 32, 32, 1],  d_h2);
-            append_layer(dataD, 'relu',   [64, 32, 32, 1],  d_h2r);
-            append_layer(dataD, 'linear', [64, 1, 1, 1],    d_h3);
-            append_layer(dataD, 'sigmoid', [64, 1, 1, 1],  samplesD);
-            with open('./{}/T_{:02d}_{:04d}.json'.format(dirD, epoch, idx), 'w') as f:
-              json.dump(dataD, f)
-
-            # save the activation map of D_
-            dirD_ = '{}/D_'.format(directory)
-            if not os.path.exists(dirD_):
-              os.makedirs(dirD_)
-            save_images(d_smp_, [manifold_h, manifold_w],
-                  './{}/F_img_{:02d}_{:04d}.png'.format(dirD_, epoch, idx))
-            for ii in range(0, d_h0_.shape[-1]):
-              save_images(np.reshape(d_h0_[:,:,:,ii], [d_h0_.shape[0],d_h0_.shape[1],d_h0_.shape[2], 1]), [manifold_h, manifold_w],
-                  './{}/F_h0_{:02d}_{:04d}_{:03d}.png'.format(dirD_, epoch, idx, ii))
-            for ii in range(0, d_h1_.shape[-1]):
-              save_images(np.reshape(d_h1_[:,:,:,ii], [d_h1_.shape[0],d_h1_.shape[1],d_h1_.shape[2], 1]), [manifold_h, manifold_w],
-                  './{}/F_h1_{:02d}_{:04d}_{:03d}.png'.format(dirD_, epoch, idx, ii))
-            save_images(np.reshape(d_h2_, [64, fc_size, fc_size, 1]), [manifold_h, manifold_w],
-                  './{}/F_h2_{:02d}_{:04d}.png'.format(dirD_, epoch, idx))
-            with open('./{}/F_h3_{:02d}_{:04d}.txt'.format(dirD_, epoch, idx), 'w') as f:
-              for i in range(0, samplesD_.shape[0]):
-                f.write("%f\n" % samplesD_[i, 0]) 
-            # save D_ as a json file
-            dataD_ = [];
-            append_layer(dataD_, 'input', [64, 28, 28, 1],  d_smp_);
-            append_layer(dataD_, 'conv',   [64, 14, 14, 11], d_h0_);
-            append_layer(dataD_, 'relu',   [64, 14, 14, 11],  d_h0r_);
-            append_layer(dataD_, 'conv',   [64, 7, 7, 74],   d_h1_);
-            append_layer(dataD_, 'relu',   [64, 7, 7, 74],   d_h1r_);
-            append_layer(dataD_, 'linear', [64, 32, 32, 1],  d_h2_);
-            append_layer(dataD_, 'relu',   [64, 32, 32, 1],  d_h2r_);
-            append_layer(dataD_, 'linear', [64, 1, 1, 1],    d_h3_);
-            append_layer(dataD_, 'sigmoid', [64, 1, 1, 1],  samplesD_);
-            with open('./{}/F_{:02d}_{:04d}.json'.format(dirD_, epoch, idx), 'w') as f:
-              json.dump(dataD_, f)
-            '''
-            
             print("[Sample] d_loss: %.8f, g_loss: %.8f" % (dd_loss, gg_loss));
             # also save the loss to file
-            fname = '{}/loss.csv'.format(config.sample_dir)
+            fname = '{}/loss.csv'.format(directory)
             fexist = os.path.isfile(fname);
             if not fexist:
               with open(fname, 'w') as f:
