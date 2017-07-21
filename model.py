@@ -459,12 +459,13 @@ class DCGAN(object):
               manifold_w = int(np.floor(np.sqrt(d_smp.shape[0])))
               fc_size = int(np.sqrt(self.gfc_dim))
 
-              itr = 0# save one image is enough, but you can save all five itr to see the trend
-              save_images(g_d_smp[itr*self.sample_num:(itr+1)*self.sample_num,:,:,:], [manifold_h, manifold_w],
-                    './{}/T_img_{:02d}_{:04d}_{:03d}.png'.format(dirD, epoch, idx, itr))
+              # enable this part to check the results as images
+              #itr = 0# save one image is enough, but you can save all five itr to see the trend
+              #save_images(g_d_smp[itr*self.sample_num:(itr+1)*self.sample_num,:,:,:], [manifold_h, manifold_w],
+              #      './{}/T_img_{:02d}_{:04d}_{:03d}.png'.format(dirD, epoch, idx, itr))
               # save the activation map of D_
-              save_images(g_d_smp_[itr*self.sample_num:(itr+1)*self.sample_num,:,:,:], [manifold_h, manifold_w],
-                    './{}/F_img_{:02d}_{:04d}_{:03d}.png'.format(dirD_, epoch, idx, itr))
+              #save_images(g_d_smp_[itr*self.sample_num:(itr+1)*self.sample_num,:,:,:], [manifold_h, manifold_w],
+              #      './{}/F_img_{:02d}_{:04d}_{:03d}.png'.format(dirD_, epoch, idx, itr))
               #######
 
               # the json data all use original order, but the csv saves ordered data
