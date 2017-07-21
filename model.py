@@ -351,8 +351,8 @@ class DCGAN(object):
           % (epoch, idx, batch_idxs,
             time.time() - start_time, errD_fake+errD_real, errG))
 
-        if np.mod(idx, 100)==0:
-        #if np.mod(idx, 100)==0 and idx!=0:
+        #if np.mod(idx, 200)==0:
+        if np.mod(idx, 100)==0 and idx!=0:
           if config.dataset == 'mnist':
             dd_loss = errD_fake+errD_real
             gg_loss = errG;
